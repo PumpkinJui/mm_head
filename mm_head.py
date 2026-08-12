@@ -1,5 +1,5 @@
 from base64 import urlsafe_b64decode as b64d
-from json import dump, load, loads
+from json import dump, loads
 from pathlib import Path
 from re import search
 
@@ -11,20 +11,24 @@ def ext(data: str) -> dict:
     loc = search(r' ([\d\- ]+) ', data).group(1)
     try:
         rot = search(r'rotation=(\d+)', data).group(1)
+        fac = None
     except AttributeError:
-        rot = search(r'facing=([^,\]]+)', data).group(1)
+        rot = None
+        fac = search(r'facing=([^,\]]+)', data).group(1)
     bsd = b64d(search(r'value:"([^\"]+)"', data).group(1)).decode()
     url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
-    name = url[url.rfind('/')+1:]
+    name = url[url.rfind('/')+1:url.rfind('/')+7]
     print(name, end='：', flush=True)
-    return {name: {
-        'location': [loc],
-        'rotation': [rot],
+    return {
+        'id': name,
+        'location': loc,
+        'rotation': rot,
+        'facing': fac,
         'url': url
-    }}
+    }
 
 def dls(url: str) -> bool:
-    name = url[url.rfind('/')+1:]
+    name = url[url.rfind('/')+1:url.rfind('/')+7]
     path = Path(f'{name}.png')
     if path.is_file():
         print('跳过下载...', flush=True)
@@ -44,50 +48,45 @@ def dls(url: str) -> bool:
     print('成功！', flush=True)
     return True
 
-def merge(dt1: dict, dt2: dict, dl: bool=True) -> dict:
-    name = next(iter(dt2))
-    if dl:
-        dls(dt2[name]['url'])
-    if dt1.get(name):
-        dt3 = {name: {
-            'location': dt1[name]['location'] + dt2[name]['location'],
-            'rotation': dt1[name]['rotation'] + dt2[name]['rotation'],
-            'url': dt1[name]['url']
-        }}
-        dt1.pop(name)
-        dt2.pop(name)
-        return dt1 | dt2 | dt3
-    return dt1 | dt2
+def merge(dt1: dict, dt2: dict, stem: str) -> dict:
+    dls(dt2['url'])
+    dt2.pop('url')
+    if dt1.get(stem):
+        dt1[stem].append(dt2)
+        return dt1
+    dt1[stem] = [dt2]
+    return dt1
 
-def main() -> None:
+def main(stem: str, data: list) -> None:
     dt = {}
+    for i in data:
+        if not i.strip():
+            continue
+        try:
+            dt_pending = ext(i)
+            dt = merge(dt, dt_pending, stem)
+        except Exception as e:
+            print()
+            print(f'{type(e).__name__}：{e}', flush=True)
+    return dt
+
+def pre() -> None:
+    dt = {}
+    f = None
     try:
-        try:
-            with open('info.txt', 'r', encoding='utf-8') as rd:
-                data_all = rd.read().splitlines()
-        except FileNotFoundError:
-            print('未找到 info.txt 批处理文件。')
-            data_all = [input('输入待处理项：')]
-        for i in data_all:
-            if not i.strip():
-                continue
-            try:
-                dt_pending = ext(i)
-                dt = merge(dt, dt_pending)
-            except Exception as e:
-                print()
-                print(f'{type(e).__name__}：{e}', flush=True)
-        try:
-            with open('info.json', 'r', encoding='utf-8') as rd:
-                old_info = load(rd)
-            for i, j in dt.items():
-                old_info = merge(old_info, {i: j}, False)
-            dt = old_info
-        except FileNotFoundError:
-            pass
+        for f in Path('.').glob('*.txt'):
+            stem = f.stem
+            with open(f, 'r', encoding='utf-8') as rd:
+                data = rd.read().splitlines()
+            print(stem)
+            dt |= main(stem, data)
+        if not f:
+            print('未找到 txt 后缀的批处理文件。')
+            data = [input('输入待处理项：')]
+            dt = main('info', data)
     finally:
         with open('info.json', 'w', encoding='utf-8') as wt:
             dump(dt, wt)
 
 if __name__ == '__main__':
-    main()
+    pre()
