@@ -57,7 +57,7 @@ def merge(dt1: dict, dt2: dict, stem: str) -> dict:
     dt1[stem] = [dt2]
     return dt1
 
-def main(stem: str, data: list) -> None:
+def main(stem: str, data: list) -> dict:
     dt = {}
     for i in data:
         if not i.strip():
