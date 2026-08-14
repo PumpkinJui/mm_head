@@ -18,7 +18,7 @@ def ext(data: str) -> dict:
     bsd = b64d(search(r'value:"([^\"]+)"', data).group(1)).decode()
     url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
     name = search(r'name:"([^"]*)"', data).group(1)
-    if not name or name == 'textures':
+    if not name or name in {'textures', 'Plummel'}:
         name = url[url.rfind('/')+1:url.rfind('/')+7]
     print(name, end='：', flush=True)
     return {
