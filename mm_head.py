@@ -17,7 +17,9 @@ def ext(data: str) -> dict:
         fac = search(r'facing=([^,\]]+)', data).group(1)
     bsd = b64d(search(r'value:"([^\"]+)"', data).group(1)).decode()
     url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
-    name = url[url.rfind('/')+1:url.rfind('/')+7]
+    name = search(r'name:"([^"]*)"', data).group(1)
+    if not name or name == 'textures':
+        name = url[url.rfind('/')+1:url.rfind('/')+7]
     print(name, end='：', flush=True)
     return {
         'id': name,
@@ -27,8 +29,7 @@ def ext(data: str) -> dict:
         'url': url
     }
 
-def dls(url: str) -> bool:
-    name = url[url.rfind('/')+1:url.rfind('/')+7]
+def dls(url: str, name: str) -> bool:
     path = Path(f'{name}.png')
     if path.is_file():
         print('跳过下载...', flush=True)
@@ -49,7 +50,7 @@ def dls(url: str) -> bool:
     return True
 
 def merge(dt1: dict, dt2: dict, stem: str) -> dict:
-    dls(dt2['url'])
+    dls(dt2['url'], dt2['id'])
     dt2.pop('url')
     if dt1.get(stem):
         dt3 = {i['location']: i['id'] for i in dt1[stem]}
