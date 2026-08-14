@@ -3,6 +3,7 @@ from json import dump, loads
 from logging import FileHandler, Formatter, StreamHandler, getLogger, shutdown
 from pathlib import Path
 from re import search
+from sys import argv
 
 from requests import exceptions, get
 
@@ -104,7 +105,7 @@ class Main:
             try:
                 print(f'L{self.ln}', end='：', flush=True)
                 dt_pending = self.ext(j)
-                dt = self.merge(dt, dt_pending, stem)
+                dt = self.merge(dt, dt_pending, stem, self.dl)
             except Exception:
                 print()
                 lg.exception('未知错误。', extra={'ln': self.ln})
@@ -116,6 +117,10 @@ class Main:
         fg_reset = '\033[0m'
         fg_bold = '\033[1m'
         fg_blue = '\033[34m'
+        self.dl = True
+        if len(argv) > 1 and argv[1] == 'nodl':
+            print('跳过下载已开启。')
+            self.dl = False
         try:
             for f in Path('.').glob('*.txt'):
                 stem = f.stem
