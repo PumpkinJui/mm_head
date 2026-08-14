@@ -52,7 +52,11 @@ def merge(dt1: dict, dt2: dict, stem: str) -> dict:
     dls(dt2['url'])
     dt2.pop('url')
     if dt1.get(stem):
-        dt1[stem].append(dt2)
+        dt3 = {i['location']: i['id'] for i in dt1[stem]}
+        if not (idn := dt3.get(dt2['location'])):
+            dt1[stem].append(dt2)
+        else:
+            print(f'位置 {dt2["location"]} 已存在 {idn}，跳过。')
         return dt1
     dt1[stem] = [dt2]
     return dt1
