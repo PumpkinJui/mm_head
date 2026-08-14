@@ -1,5 +1,6 @@
 from base64 import urlsafe_b64decode as b64d
 from json import dump, loads
+from logging import FileHandler, Formatter, StreamHandler, getLogger
 from pathlib import Path
 from re import search
 
@@ -57,7 +58,7 @@ def merge(dt1: dict, dt2: dict, stem: str) -> dict:
         if not (idn := dt3.get(dt2['location'])):
             dt1[stem].append(dt2)
         else:
-            print(f'位置 {dt2["location"]} 已存在 {idn}，跳过。')
+            lg.warning(f'位置 {dt2["location"]} 已存在头颅 {idn}')
         return dt1
     dt1[stem] = [dt2]
     return dt1
@@ -70,9 +71,9 @@ def main(stem: str, data: list) -> dict:
         try:
             dt_pending = ext(i)
             dt = merge(dt, dt_pending, stem)
-        except Exception as e:
+        except Exception:
             print()
-            print(f'{type(e).__name__}：{e}', flush=True)
+            lg.exception('未知错误。')
     return dt
 
 def pre() -> None:
@@ -94,4 +95,12 @@ def pre() -> None:
             dump(dt, wt)
 
 if __name__ == '__main__':
+    lg = getLogger(__name__)
+    form = Formatter('%(levelname)s - %(message)s')
+    fil_h = FileHandler('debug.log', encoding='utf-8')
+    std_h = StreamHandler()
+    fil_h.setFormatter(form)
+    std_h.setFormatter(form)
+    lg.addHandler(fil_h)
+    lg.addHandler(std_h)
     pre()
