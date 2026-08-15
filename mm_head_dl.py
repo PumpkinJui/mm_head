@@ -88,6 +88,14 @@ class Main:
         dtn = {}
         for i, j in dt.items():
             dtn[i] = []
+            urls = (
+                'url:' +
+                '\nurl:'.join(dict.fromkeys(u['url'] for u in j)).replace(
+                    'https://textures.minecraft.net/texture/', ''
+                ) + '\n'
+            )
+            with open('url.log', 'w', encoding='utf-8') as wt:
+                wt.write(urls)
             for k in j:
                 k.pop('url')
                 l = [m for m, n in k.items() if not n]
