@@ -1,14 +1,14 @@
 from argparse import ArgumentParser
 from base64 import urlsafe_b64decode as b64d
 from json import dump, loads
-from logging import FileHandler, Formatter, StreamHandler, getLogger, shutdown
+from logging import DEBUG, FileHandler, Formatter, StreamHandler, getLogger, shutdown
 from pathlib import Path
 from re import search
 
 from requests import exceptions, get
 
 
-class Info:
+class Get:
     def ext(self, data: str) -> dict:
         fac, rot, url = None, None, None
         loc = search(r' ([\d\-. ]+) ', data).group(1)
@@ -121,22 +121,25 @@ class Info:
         return dt
 
     def __init__(self) -> None:
+        self.pos = self.__class__.__name__.upper()
         dt = {}
         f = None
-        fg_reset = '\033[0m'
-        fg_bold = '\033[1m'
-        fg_blue = '\033[34m'
         if argp().nodl:
-            print('跳过下载已开启。')
+            lg.info('跳过下载已开启。', extra={'pos': self.pos})
         try:
             for f in Path('.').glob('*.txt'):
                 stem = f.stem
+                if stem == 'terlang':
+                    continue
                 with open(f, 'r', encoding='utf-8') as rd:
                     data = rd.read().splitlines()
-                print(fg_blue, fg_bold, stem, fg_reset, ' ', len(data), sep='')
+                lg.info('%s - %s',
+                    stem, len(data),
+                    extra={'pos': self.pos}
+                )
                 dt |= self.prune(self.pro(stem, data))
             if not f:
-                print('未找到 txt 后缀的批处理文件。')
+                lg.warning('未找到 txt 后缀的批处理文件。', extra={'pos': self.pos})
                 data = [input('输入待处理项：')]
                 dt = self.pro('info', data)
         finally:
@@ -145,7 +148,8 @@ class Info:
 
 class Idt:
     def __init__(self):
-        print('IDT')
+        self.pos = self.__class__.__name__.upper()
+        print(self.pos)
 
 class Imp:
     def blotem(self, idn: str, templ: str) -> bool:
@@ -157,6 +161,7 @@ class Imp:
         flag = templ[templ.rfind('.', 0, -7)+1:templ.rfind('.')]
         wt_path = f'{flag}s/{idn}.{flag}.json'
         self.wt_op(wt_path, uni)
+        lg.info('%ss 数据已生成！', flag, extra={'pos': self.pos})
         return True
 
     def terlang(self, idn_lt: tuple) -> None:
@@ -178,6 +183,7 @@ class Imp:
             '\n\n// ===== en_US.lang =====\n' + enl + '\n'
         )
         self.wt_op('terlang.txt', final)
+        lg.info(f'terlang 数据已生成！', extra={'pos': self.pos})
 
     def wt_op(self, path: str, con: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -185,31 +191,31 @@ class Imp:
             wt.write(con)
 
     def __init__(self) -> None:
+        self.pos = self.__class__.__name__.upper()
         block_tem = 'templates/yzbwdlt.block.json'
         item_tem = 'templates/yzbwdlt.item.json'
         block_info, item_info = True, True
         stems = tuple(i.stem for i in Path('.').glob('*.png'))
         if not stems:
-            lg.error('无 png 文件！', extra={'pos': 'IMP'})
+            lg.error('无 png 文件！', extra={'pos': self.pos})
             return
-        print('开始生成导入数据...')
+        lg.info('开始生成导入数据...', extra={'pos': self.pos})
         self.terlang(stems)
         for i in stems:
             if not self.blotem(i, block_tem) and block_info:
                 lg.error(
-                    '未找到模板 %s！',
+                    '未找到模板 %s，跳过 block 生成！',
                     block_tem,
-                    extra={'pos': 'IMP'}
+                    extra={'pos': self.pos}
                 )
                 block_info = False
             if not self.blotem(i, item_tem) and item_info:
                 lg.error(
-                    '未找到模板 %s！',
+                    '未找到模板 %s，跳过 item 生成！',
                     item_tem,
-                    extra={'pos': 'IMP'}
+                    extra={'pos': self.pos}
                 )
                 item_info = False
-        print('数据已生成！')
 
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
@@ -217,13 +223,15 @@ def argp():
         '-m', '--mode',
         nargs='+',
         default=['info', 'idt'],
-        help='运行模式'
+        help='运行模式，包括 ext、idt、imp'
     )
     par.add_argument('--nodl', action='store_true', help='跳过下载')
+    par.add_argument('--nourl', action='store_true', help='跳过 URL 记录')
     # return par.parse_args(['-m', 'imp'])
     return par.parse_args()
 
 lg = getLogger(__name__)
+lg.setLevel(DEBUG)
 lg.handlers.clear()
 form = Formatter('%(pos)s：%(levelname)s - %(message)s')
 fil_h = FileHandler('debug.log', 'w', encoding='utf-8')
@@ -234,8 +242,8 @@ lg.addHandler(fil_h)
 lg.addHandler(std_h)
 if __name__ == '__main__':
     args = argp()
-    if 'info' in args.mode:
-        Info()
+    if 'get' in args.mode:
+        Get()
     if 'idt' in args.mode:
         Idt()
     if 'imp' in args.mode:
