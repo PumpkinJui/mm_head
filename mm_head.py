@@ -1,14 +1,14 @@
+from argparse import ArgumentParser
 from base64 import urlsafe_b64decode as b64d
 from json import dump, loads
 from logging import FileHandler, Formatter, StreamHandler, getLogger, shutdown
 from pathlib import Path
 from re import search
-from sys import argv
 
 from requests import exceptions, get
 
 
-class Main:
+class Info:
     def ext(self, data: str) -> dict:
         fac, rot, url = None, None, None
         loc = search(r' ([\d\-. ]+) ', data).group(1)
@@ -28,7 +28,7 @@ class Main:
             name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1)
         else:
             print()
-            lg.warning('无头颅数据。', extra={'ln': self.ln})
+            lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
         print(name, end='，', flush=True)
         return {
@@ -49,17 +49,18 @@ class Main:
                 print(f'超时（{i+1}/3）...', end='', flush=True)
         else:
             print()
-            lg.warning('已超时。', extra={'ln': self.ln})
+            lg.warning('已超时。', extra={'pos': f'L{self.ln}'})
             return False
         with open(f'{name}.png', 'wb') as png:
             png.write(img.content)
         print('成功！', flush=True)
         return True
 
-    def merge(self, dt1: dict, dt2: dict, stem: str, dl: bool=True) -> dict:
+    def merge(self, dt1: dict, dt2: dict, stem: str) -> dict:
         if not dt2:
             return dt1
-        if dl and dt2['url'] and not Path(f'{dt2['id']}.png').is_file():
+        if not argp().nodl and dt2['url'] and \
+            not Path(f'{dt2['id']}.png').is_file():
             self.dls(dt2['url'], dt2['id'])
         else:
             print('跳过下载...', flush=True)
@@ -71,14 +72,14 @@ class Main:
                     lg.warning(
                         '头颅 %s 对应多重 URL。',
                         dt2['id'],
-                        extra={'ln': self.ln}
+                        extra={'pos': f'L{self.ln}'}
                     )
                 dt1[stem].append(dt2)
             else:
                 lg.warning(
                     '位置 %s 已存在头颅 %s。',
                     dt2["location"], idn,
-                    extra={'ln': self.ln}
+                    extra={'pos': f'L{self.ln}'}
                 )
             return dt1
         dt1[stem] = [dt2]
@@ -113,10 +114,10 @@ class Main:
             try:
                 print(f'L{self.ln}', end='：', flush=True)
                 dt_pending = self.ext(j)
-                dt = self.merge(dt, dt_pending, stem, self.dl)
+                dt = self.merge(dt, dt_pending, stem)
             except Exception:
                 print()
-                lg.exception('未知错误。', extra={'ln': self.ln})
+                lg.exception('未知错误。', extra={'pos': f'L{self.ln}'})
         return dt
 
     def __init__(self) -> None:
@@ -125,10 +126,8 @@ class Main:
         fg_reset = '\033[0m'
         fg_bold = '\033[1m'
         fg_blue = '\033[34m'
-        self.dl = True
-        if len(argv) > 1 and argv[1] == 'nodl':
+        if argp().nodl:
             print('跳过下载已开启。')
-            self.dl = False
         try:
             for f in Path('.').glob('*.txt'):
                 stem = f.stem
@@ -144,9 +143,89 @@ class Main:
             with open('info.json', 'w', encoding='utf-8') as wt:
                 dump(dt, wt)
 
+class Idt:
+    def __init__(self):
+        print('IDT')
+
+class Imp:
+    def blotem(self, idn: str, templ: str) -> bool:
+        if not Path(templ).is_file():
+            return False
+        with open(templ, 'r', encoding='utf-8') as rd:
+            tem = rd.read()
+        uni = tem.replace('yzbwdlt', idn)
+        flag = templ[templ.rfind('.', 0, -7)+1:templ.rfind('.')]
+        wt_path = f'{flag}s/{idn}.{flag}.json'
+        self.wt_op(wt_path, uni)
+        return True
+
+    def terlang(self, idn_lt: tuple) -> None:
+        ter = '\n'.join(
+            f'"player_head_{i}": {{ "textures": "textures/entity/{i}" }},' \
+            for i in idn_lt
+        )
+        zhl = '\n'.join(
+            f'tile.player_head:{i}.name={i} 的头' \
+            for i in idn_lt
+        )
+        enl = '\n'.join(
+            f"tile.player_head:{i}.name={i}'s Head" \
+            for i in idn_lt
+        )
+        final = (
+            '// ===== terrain_texture.json =====\n' + ter +
+            '\n\n// ===== zh_CN.lang =====\n' + zhl +
+            '\n\n// ===== en_US.lang =====\n' + enl + '\n'
+        )
+        self.wt_op('terlang.txt', final)
+
+    def wt_op(self, path: str, con: str) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as wt:
+            wt.write(con)
+
+    def __init__(self) -> None:
+        block_tem = 'templates/yzbwdlt.block.json'
+        item_tem = 'templates/yzbwdlt.item.json'
+        block_info, item_info = True, True
+        stems = tuple(i.stem for i in Path('.').glob('*.png'))
+        if not stems:
+            lg.error('无 png 文件！', extra={'pos': 'IMP'})
+            return
+        print('开始生成导入数据...')
+        self.terlang(stems)
+        for i in stems:
+            if not self.blotem(i, block_tem) and block_info:
+                lg.error(
+                    '未找到模板 %s！',
+                    block_tem,
+                    extra={'pos': 'IMP'}
+                )
+                block_info = False
+            if not self.blotem(i, item_tem) and item_info:
+                lg.error(
+                    '未找到模板 %s！',
+                    item_tem,
+                    extra={'pos': 'IMP'}
+                )
+                item_info = False
+        print('数据已生成！')
+
+def argp():
+    par = ArgumentParser(description='密室杀手自定义头颅生成器')
+    par.add_argument(
+        '-m', '--mode',
+        nargs='+',
+        default=['info', 'idt'],
+        help='运行模式'
+    )
+    par.add_argument('--nodl', action='store_true', help='跳过下载')
+    # return par.parse_args(['-m', 'imp'])
+    return par.parse_args()
+
 lg = getLogger(__name__)
 lg.handlers.clear()
-form = Formatter('L%(ln)s - %(levelname)s - %(message)s')
+form = Formatter('%(pos)s：%(levelname)s - %(message)s')
 fil_h = FileHandler('debug.log', 'w', encoding='utf-8')
 std_h = StreamHandler()
 fil_h.setFormatter(form)
@@ -154,5 +233,11 @@ std_h.setFormatter(form)
 lg.addHandler(fil_h)
 lg.addHandler(std_h)
 if __name__ == '__main__':
-    Main()
+    args = argp()
+    if 'info' in args.mode:
+        Info()
+    if 'idt' in args.mode:
+        Idt()
+    if 'imp' in args.mode:
+        Imp()
 shutdown()
