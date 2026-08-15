@@ -1,9 +1,11 @@
 from argparse import ArgumentParser
 from base64 import urlsafe_b64decode as b64d
-from json import dump, loads
+from csv import DictWriter
+from json import dump, load, loads
 from logging import DEBUG, FileHandler, Formatter, StreamHandler, getLogger, shutdown
 from pathlib import Path
 from re import search
+from time import sleep
 
 from requests import exceptions, get
 
@@ -47,9 +49,10 @@ class Get:
                 break
             except exceptions.Timeout:
                 print(f'超时（{i+1}/3）...', end='', flush=True)
+                sleep(1)
         else:
             print()
-            lg.warning('已超时。', extra={'pos': f'L{self.ln}'})
+            lg.error('已超时。', extra={'pos': f'L{self.ln}'})
             return False
         with open(f'{name}.png', 'wb') as png:
             png.write(img.content)
@@ -87,22 +90,24 @@ class Get:
 
     def prune(self, dt: dict) -> dict:
         dtn = {}
+        urls = []
         for i, j in dt.items():
             dtn[i] = []
-            urls = (
-                'url:' +
-                '\nurl:'.join(dict.fromkeys(u['url'] for u in j)).replace(
-                    'https://textures.minecraft.net/texture/', ''
-                ) + '\n'
-            )
-            with open('url.log', 'w', encoding='utf-8') as wt:
-                wt.write(urls)
+            url = [{m: n} for m, n in {
+                k['id']: f'url:{k["url"].replace(
+                    "https://textures.minecraft.net/texture/", ""
+                    )}' for k in j
+                }.items()]
+            urls.extend(url)
             for k in j:
                 k.pop('url')
                 l = [m for m, n in k.items() if not n]
                 for m in l:
                     k.pop(m)
                 dtn[i].append(k)
+        with open('url.json', 'w', encoding='utf-8') as wt:
+            urls = {'data': urls}
+            dump(urls, wt)
         return dtn
 
     def pro(self, stem: str, data: list) -> dict:
@@ -126,30 +131,93 @@ class Get:
         f = None
         if argp().nodl:
             lg.info('跳过下载已开启。', extra={'pos': self.pos})
-        try:
-            for f in Path('.').glob('*.txt'):
-                stem = f.stem
-                if stem == 'terlang':
-                    continue
-                with open(f, 'r', encoding='utf-8') as rd:
-                    data = rd.read().splitlines()
-                lg.info('%s - %s',
-                    stem, len(data),
-                    extra={'pos': self.pos}
-                )
-                dt |= self.prune(self.pro(stem, data))
-            if not f:
-                lg.warning('未找到 txt 后缀的批处理文件。', extra={'pos': self.pos})
-                data = [input('输入待处理项：')]
-                dt = self.pro('info', data)
-        finally:
-            with open('info.json', 'w', encoding='utf-8') as wt:
-                dump(dt, wt)
+        for f in Path('.').glob('*.txt'):
+            stem = f.stem
+            if stem == 'terlang':
+                continue
+            with open(f, 'r', encoding='utf-8') as rd:
+                data = rd.read().splitlines()
+            lg.info('%s - %s',
+                stem, len(data),
+                extra={'pos': self.pos}
+            )
+            dt |= self.prune(self.pro(stem, data))
+        if not f:
+            lg.warning('未找到 txt 后缀的批处理文件。', extra={'pos': self.pos})
+            data = [input('输入待处理项：')]
+            dt = self.pro('info', data)
+        with open('info.json', 'w', encoding='utf-8') as wt:
+            dump(dt, wt)
+            lg.info('信息提取完成！', extra={'pos': self.pos})
+            print()
 
 class Idt:
-    def __init__(self):
+    def ext(self, url: str) -> str:
+        for i in range(3):
+            try:
+                res = get(
+                    'https://minecraft-heads.com/custom-heads/search',
+                    params={'searchterm': url},
+                    timeout=(6.05, 10)
+                )
+                break
+            except exceptions.Timeout:
+                print(f'超时（{i+1}/3）...', end='', flush=True)
+                sleep(1)
+        else:
+            print()
+            lg.error('已超时。', extra={'pos': f'L{self.msg}'})
+            return ''
+        data = res.text
+        if 'No Heads available' in data:
+            return ''
+        con = data[data.find('descending'):data.find('Search Tips')]
+        return search(r'a href=.+title="([^"]+)"', con).group(1)
+
+    def d2csv(self, dt: dict) -> None:
+        with open('name.csv', 'w', encoding='utf-8', newline='') as wt:
+            headers = list(dt[0])
+            wt_op = DictWriter(wt, fieldnames=headers)
+            wt_op.writeheader()
+            wt_op.writerows(dt)
+
+    def pro(self, data: dict) -> None:
+        m, n = next(iter(data.items()))
+        self.msg = f'{self.ln} - {m}'
+        print(self.msg, end='：', flush=True)
+        j = self.ext(n)
+        if j:
+            j = j.replace(' ', '_')
+            self.dt.append({'old': m, 'new': j})
+            print(j, flush=True)
+            if j in self.n_lt:
+                lg.warning(
+                    '与 %s 拥有共同的新名称 %s。',
+                    next(iter(self.data[self.n_lt.index(j)].keys())), j,
+                    extra={'pos': self.msg}
+                )
+            self.n_lt.append(j)
+        else:
+            print('None', flush=True)
+            lg.warning('无可用名称。', extra={'pos': self.msg})
+        sleep(0.2)
+
+    def __init__(self) -> None:
+        self.dt = []
+        self.n_lt = []
         self.pos = self.__class__.__name__.upper()
-        print(self.pos)
+        path = 'url.json'
+        if Path(path).is_file():
+            with open(path, 'r', encoding='utf-8') as rd:
+                self.data = load(rd)['data']
+            for i, j in enumerate(self.data):
+                self.ln = i + 1
+                self.pro(j)
+            self.d2csv(self.dt)
+        else:
+            lg.error('%s 不存在！', path, extra={'pos': self.pos})
+        lg.info('名称对照完成！', extra={'pos': self.pos})
+        print()
 
 class Imp:
     def blotem(self, idn: str, templ: str) -> bool:
@@ -183,7 +251,7 @@ class Imp:
             '\n\n// ===== en_US.lang =====\n' + enl + '\n'
         )
         self.wt_op('terlang.txt', final)
-        lg.info(f'terlang 数据已生成！', extra={'pos': self.pos})
+        lg.info('terlang 数据已生成！', extra={'pos': self.pos})
 
     def wt_op(self, path: str, con: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -199,7 +267,6 @@ class Imp:
         if not stems:
             lg.error('无 png 文件！', extra={'pos': self.pos})
             return
-        lg.info('开始生成导入数据...', extra={'pos': self.pos})
         self.terlang(stems)
         for i in stems:
             if not self.blotem(i, block_tem) and block_info:
@@ -216,14 +283,15 @@ class Imp:
                     extra={'pos': self.pos}
                 )
                 item_info = False
+        print()
 
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
     par.add_argument(
         '-m', '--mode',
         nargs='+',
-        default=['info', 'idt'],
-        help='运行模式，包括 ext、idt、imp'
+        default=['ext'],
+        help='运行模式，可多选，包括 ext、idt、imp，默认 ext'
     )
     par.add_argument('--nodl', action='store_true', help='跳过下载')
     par.add_argument('--nourl', action='store_true', help='跳过 URL 记录')
@@ -241,11 +309,14 @@ std_h.setFormatter(form)
 lg.addHandler(fil_h)
 lg.addHandler(std_h)
 if __name__ == '__main__':
-    args = argp()
-    if 'get' in args.mode:
-        Get()
-    if 'idt' in args.mode:
-        Idt()
-    if 'imp' in args.mode:
-        Imp()
+    try:
+        args = argp()
+        if 'get' in args.mode:
+            Get()
+        if 'idt' in args.mode:
+            Idt()
+        if 'imp' in args.mode:
+            Imp()
+    except Exception:
+        lg.exception('未知错误。', extra={'pos': __name__})
 shutdown()
