@@ -12,7 +12,7 @@ from logging import (
     shutdown,
 )
 from pathlib import Path
-from re import search
+from re import search, sub
 from time import sleep
 
 from requests import exceptions, get
@@ -45,7 +45,7 @@ class Get:
             print()
             lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
-        print(name, end='，', flush=True)
+        print(name, end='：', flush=True)
         return {
             'id': name,
             'location': loc,
@@ -65,7 +65,7 @@ class Get:
                 sleep(1)
         else:
             print()
-            lg.error('已超时。', extra={'pos': f'L{self.ln}'})
+            lg.error('已超时。', extra={'pos': f'L{self.ln} - {name}'})
             return False
         with open(f'assets/{name}.png', 'wb') as png:
             png.write(img.content)
@@ -75,30 +75,41 @@ class Get:
     def merge(self, dt1: dict, dt2: dict, stem: str) -> dict:
         if not dt2:
             return dt1
-        if not argp().nodl and dt2['url'] and \
-            not Path(f'assets/{dt2["id"]}.png').is_file():
-            self.dls(dt2['url'], dt2['id'])
+        name, url = dt2['id'], dt2['url']
+        if not argp().nodl and url and \
+            not Path(f'assets/{name}.png').is_file():
+            self.dls(url, name)
         else:
             print('跳过下载...', flush=True)
         if dt1.get(stem):
             dt3 = {i['location']: i['id'] for i in dt1[stem]}
-            dt4 = {i['id']: i['url'] for i in dt1[stem]}
             if not (idn := dt3.get(dt2['location'])):
-                if dt4.get(dt2['id'], dt2['url']) != dt2['url']:
-                    lg.warning(
-                        '头颅 %s 对应多重 URL。',
-                        dt2['id'],
-                        extra={'pos': f'L{self.ln}'}
-                    )
                 dt1[stem].append(dt2)
             else:
                 lg.warning(
                     '位置 %s 已存在头颅 %s。',
                     dt2["location"], idn,
-                    extra={'pos': f'L{self.ln}'}
+                    extra={'pos': f'L{self.ln} - {name}'}
                 )
-            return dt1
-        dt1[stem] = [dt2]
+        else:
+            dt1[stem] = [dt2]
+        if self.n_lt.get(name, url) != url:
+            self.dup[name] = self.dup.get(name, 0) + 1
+            i = name
+            dt2['id'] += f'_{self.dup[name]}'
+            name = dt2['id']
+            lg.warning(
+                '头颅 %s 对应多重 URL，已将新的更名为 %s。',
+                i, name,
+                extra={'pos': f'L{self.ln} - {i}'}
+            )
+            print(f'L{self.ln} - {name}：', end='', flush=True)
+            if not argp().nodl and url and \
+                not Path(f'assets/{name}.png').is_file():
+                self.dls(url, name)
+            else:
+                print('跳过下载...', flush=True)
+        self.n_lt[name] = url
         return dt1
 
     def prune(self, dt: dict) -> dict:
@@ -126,7 +137,7 @@ class Get:
             if not j.strip():
                 continue
             try:
-                print(f'L{self.ln}', end='：', flush=True)
+                print(f'L{self.ln}', end=' - ', flush=True)
                 dt_pending = self.ext(j)
                 dt = self.merge(dt, dt_pending, stem)
             except Exception:
@@ -136,6 +147,8 @@ class Get:
         return dt
 
     def __init__(self) -> None:
+        self.dup = {}
+        self.n_lt = {}
         dt = {}
         f = None
         if argp().nodl:
@@ -231,11 +244,12 @@ class Idt:
             self.c_lt[m] = j
         if j:
             j = j.translate(str.maketrans(' ', '_', '()')).lower() + '_' + n[4:6]
+            j = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', j)
             print(j, flush=True)
             if l := self.n_lt.get(j):
                 self.dup[j] = self.dup.get(j, 0) + 1
                 k = j
-                j = j + f'_{self.dup[j]}'
+                j += f'_{self.dup[j]}'
                 lg.warning('与 %s 拥有共同的新名称，已更名为 %s。', l, j, extra={'pos': msg})
             self.n_lt[j] = m
         else:
