@@ -174,10 +174,10 @@ class Get:
             with open('output/url.json', 'w', encoding='utf-8') as wt:
                 dump(urls, wt)
         lg.info('信息提取完成！', extra={'pos': self.pos})
-        print()
 
 class Idt:
     def ext(self, url: str) -> str:
+        sleep(0.2)
         for i in range(3):
             try:
                 res = get(
@@ -199,6 +199,16 @@ class Idt:
         con = data[data.find('descending'):data.find('Search Tips')]
         return search(r'a href=.+title="([^"]+)"', con).group(1)
 
+    def cache(self) -> dict:
+        if argp().nocache:
+            lg.info('缓存已忽略！', extra={'pos': self.pos})
+            return {}
+        if not Path('output/cache.json').is_file():
+            return {}
+        with open('output/cache.json', 'r', encoding='utf-8') as rd:
+            lg.info('缓存已加载！', extra={'pos': self.pos})
+            return load(rd)
+
     def d2csv(self, dt: dict) -> None:
         with open('output/name.csv', 'w', encoding='utf-8', newline='') as wt:
             headers = list(dt[0])
@@ -210,9 +220,14 @@ class Idt:
         n, m = next(iter(data.items()))
         self.msg = f'L{self.ln} - {m}'
         print(self.msg, end='：', flush=True)
-        j = self.ext(n)
+        if (k := self.c_lt.get(m)) or k == '':
+            j = k
+            print('（缓存）', end='', flush=True)
+        else:
+            j = self.ext(n)
+            self.c_lt[m] = j
         if j:
-            j = j.translate(str.maketrans(' ', '_', '()')).lower()
+            j = j.translate(str.maketrans(' ', '_', '()')).lower() + '_' + n[4:6]
             print(j, flush=True)
             if j in self.n_lt:
                 if self.dup.get(j):
@@ -232,26 +247,30 @@ class Idt:
             j = None
             lg.warning('无可用名称。', extra={'pos': self.msg})
         self.dt.append({'old': m, 'new': j})
-        sleep(0.2)
 
     def __init__(self) -> None:
+        self.pos = self.__class__.__name__.upper()
         self.dt = []
         self.n_lt = []
         self.dup = {}
-        self.pos = self.__class__.__name__.upper()
-        path = 'output/url.json'
-        if Path(path).is_file():
-            with open(path, 'r', encoding='utf-8') as rd:
-                self.data = load(rd)['data']
-            lg.info('%s - L%s', path, len(self.data), extra={'pos': self.pos})
-            for i, j in enumerate(self.data):
-                self.ln = i + 1
-                self.pro(j)
-            self.d2csv(self.dt)
-        else:
-            lg.error('%s 不存在！', path, extra={'pos': self.pos})
-        lg.info('名称对照完成！', extra={'pos': self.pos})
-        print()
+        self.c_lt = self.cache()
+        try:
+            path = 'output/url.json'
+            if Path(path).is_file():
+                with open(path, 'r', encoding='utf-8') as rd:
+                    self.data = load(rd)['data']
+                lg.info('%s - L%s', path, len(self.data), extra={'pos': self.pos})
+                for i, j in enumerate(self.data):
+                    self.ln = i + 1
+                    self.pro(j)
+                self.d2csv(self.dt)
+            else:
+                lg.error('%s 不存在！', path, extra={'pos': self.pos})
+            lg.info('名称对照完成！', extra={'pos': self.pos})
+        finally:
+            with open('output/cache.json', 'w', encoding='utf-8') as wt:
+                dump(self.c_lt, wt)
+                lg.info('缓存已输出！', extra={'pos': self.pos})
 
 class Imp:
     def blotem(self, idn: str, templ: str) -> bool:
@@ -316,7 +335,6 @@ class Imp:
                 )
                 item_info = False
         lg.info('导入数据生成完成！', extra={'pos': self.pos})
-        print()
 
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
@@ -326,9 +344,10 @@ def argp():
         default=['get'],
         help='运行模式，可多选，包括 get、idt、imp，默认 get'
     )
-    par.add_argument('--nodl', action='store_true', help='跳过下载')
-    par.add_argument('--nourl', action='store_true', help='跳过 URL 记录')
-    # return par.parse_args(['-m', 'imp'])
+    par.add_argument('-d', '--nodl', action='store_true', help='跳过下载')
+    par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
+    par.add_argument('-c', '--nocache', action='store_true', help='忽略缓存')
+    # return par.parse_args(['-m', 'idt'])
     return par.parse_args()
 
 Path('./output').mkdir(parents=True, exist_ok=True)
@@ -347,10 +366,13 @@ if __name__ == '__main__':
     try:
         if 'get' in argp().mode:
             Get()
+            print()
         if 'idt' in argp().mode:
             Idt()
+            print()
         if 'imp' in argp().mode:
             Imp()
+            print()
     except Exception:
         lg.exception('未知错误。', extra={'pos': __name__})
 shutdown()
