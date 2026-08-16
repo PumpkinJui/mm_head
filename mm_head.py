@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from base64 import urlsafe_b64decode as b64d
-from csv import DictWriter
+from csv import DictReader, DictWriter
 from json import dump, load, loads
 from logging import (
     DEBUG,
@@ -209,12 +209,12 @@ class Idt:
             lg.info('缓存已加载！', extra={'pos': self.pos})
             return load(rd)
 
-    def d2csv(self, dt: dict) -> None:
+    def dout(self) -> None:
         with open('output/name.csv', 'w', encoding='utf-8', newline='') as wt:
-            headers = list(dt[0])
+            headers = list(self.dt[0])
             wt_op = DictWriter(wt, fieldnames=headers)
             wt_op.writeheader()
-            wt_op.writerows(dt)
+            wt_op.writerows(self.dt)
 
     def pro(self, data: dict) -> None:
         n, m = next(iter(data.items()))
@@ -263,7 +263,7 @@ class Idt:
                 for i, j in enumerate(self.data):
                     self.ln = i + 1
                     self.pro(j)
-                self.d2csv(self.dt)
+                self.dout()
             else:
                 lg.error('%s 不存在！', path, extra={'pos': self.pos})
             lg.info('名称对照完成！', extra={'pos': self.pos})
@@ -304,13 +304,7 @@ class Imp:
         )
         self.wt_op('output/terlang.txt', final)
 
-    def wt_op(self, path: str, con: str) -> None:
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as wt:
-            wt.write(con)
-
-    def __init__(self) -> None:
-        self.pos = self.__class__.__name__.upper()
+    def gen(self) -> None:
         block_tem = 'templates/yzbwdlt.block.json'
         item_tem = 'templates/yzbwdlt.item.json'
         block_info, item_info = True, True
@@ -336,6 +330,42 @@ class Imp:
                 item_info = False
         lg.info('导入数据生成完成！', extra={'pos': self.pos})
 
+    def rename(self) -> None:
+        with open('output/info.json', 'r', encoding='utf-8') as rd:
+            data = rd.read()
+        with open('output/name.csv', 'r', encoding='utf-8') as rd:
+            rd_op = DictReader(rd)
+            for i, j in enumerate(rd_op):
+                old = j['old']
+                new = j['new']
+                ln = f'L{i+1}'
+                if new:
+                    if Path(f'assets/{old}.png').is_file():
+                        Path(f'assets/{old}.png').rename(f'assets/{new}.png')
+                    else:
+                        lg.warning('%s 文件不存在，已跳过。', old, extra={'pos': ln})
+                    data = data.replace(old, new)
+                else:
+                    lg.warning('%s 新名称为空，已跳过。', old, extra={'pos': ln})
+        with open('output/info.json', 'w', encoding='utf-8') as wt:
+            wt.write(data)
+        lg.info('重命名完成！', extra={'pos': self.pos})
+
+    def wt_op(self, path: str, con: str) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as wt:
+            wt.write(con)
+
+    def __init__(self) -> None:
+        self.pos = self.__class__.__name__.upper()
+        if not Path('output/name.csv').is_file():
+            lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
+        elif not Path('output/info.json').is_file():
+            lg.error('未找到信息文件，跳过重命名！', extra={'pos': self.pos})
+        else:
+            self.rename()
+        self.gen()
+
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
     par.add_argument(
@@ -347,7 +377,7 @@ def argp():
     par.add_argument('-d', '--nodl', action='store_true', help='跳过下载')
     par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
     par.add_argument('-c', '--nocache', action='store_true', help='忽略缓存')
-    # return par.parse_args(['-m', 'idt'])
+    # return par.parse_args(['-m', 'imp'])
     return par.parse_args()
 
 Path('./output').mkdir(parents=True, exist_ok=True)
