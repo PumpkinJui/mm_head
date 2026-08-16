@@ -36,7 +36,7 @@ class Get:
             url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
             name = search(r'(?:name|text): ?"([^"]*)"', data).group(1) \
                 .translate(trans).lower()
-            if not name or name in {'textures', 'plummel'}:
+            if not name or name == 'textures':
                 name = url[url.rfind('/')+1:url.rfind('/')+7]
         elif 'head' in data:
             name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1) \
@@ -356,7 +356,7 @@ class Imp:
             ln = f'L{str(i+1).zfill(linum)}'
             if new:
                 if Path(f'assets/{old}.png').is_file():
-                    Path(f'assets/{old}.png').rename(f'assets/{new}.png')
+                    Path(f'assets/{old}.png').replace(f'assets/{new}.png')
                 else:
                     lg.warning('%s 文件不存在，已跳过。', old, extra={'pos': ln})
                 info = info.replace(old, new)
