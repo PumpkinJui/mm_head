@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from base64 import urlsafe_b64decode as b64d
-from csv import DictReader, DictWriter
+from csv import reader, writer
 from json import dump, load, loads
 from logging import (
     DEBUG,
@@ -23,7 +23,7 @@ class Get:
 
     def ext(self, data: str) -> dict:
         fac, rot, url = None, None, None
-        trans = str.maketrans(' ', '_', '()')
+        trans = str.maketrans(' -', '__', '()')
         loc = search(r' ([\d\-. ]+) ', data).group(1)
         if 'rotation' in data:
             rot = int(search(r'rotation=(\d+)', data).group(1))
@@ -45,6 +45,11 @@ class Get:
             print()
             lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
+        _ = '''
+        if name.isdecimal():
+            lg.warning('非法 ID，已更名为 %s。', name[:-1] + 'r', extra={'pos': f'L{self.ln} - {name}'})
+            name = name[:-1] + 'r'
+        '''
         print(name, end=' - ', flush=True)
         return {
             'id': name,
@@ -62,6 +67,9 @@ class Get:
                 break
             except exceptions.Timeout:
                 print(f'超时（{i+1}/3）...', end='', flush=True)
+                sleep(1)
+            except exceptions.ConnectionError:
+                print(f'连接错误（{i+1}/3）...', end='', flush=True)
                 sleep(1)
         else:
             print()
@@ -228,11 +236,10 @@ class Idt:
             return load(rd)
 
     def dout(self) -> None:
+        lt = [[i['old'], i['new']] for i in self.dt]
         with open('output/name.csv', 'w', encoding='utf-8', newline='') as wt:
-            headers = list(self.dt[0])
-            wt_op = DictWriter(wt, fieldnames=headers)
-            wt_op.writeheader()
-            wt_op.writerows(self.dt)
+            wt_op = writer(wt)
+            wt_op.writerows(lt)
 
     def pro(self, data: dict, ln: str) -> None:
         n, m = next(iter(data.items()))
@@ -245,7 +252,7 @@ class Idt:
             j = self.ext(n, msg)
             self.c_lt[m] = j
         if j:
-            j = j.translate(str.maketrans(' ', '_', '()')).lower() + '_' + n[4:6]
+            j = j.translate(str.maketrans(' -', '__', '()')).lower() + '_' + n[4:6]
             j = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', j)
             print(j, flush=True)
             if l := self.n_lt.get(j):
@@ -298,16 +305,31 @@ class Imp:
         return True
 
     def terlang(self, idn_lt: tuple) -> None:
+        fb = True
+        if Path('templates/playerheads.csv').is_file():
+            fb = False
+            with open('templates/playerheads.csv', 'r', encoding='utf-8-sig') as rd:
+                rd_op = reader(rd)
+                data = {i[1]: i[2] for i in rd_op}
+        else:
+            lg.warning('未找到译名文件，使用备用方案！', extra={'pos': self.POS})
         ter = '\n'.join(
-            f'"player_head_{i}": {{ "textures": "textures/entity/{i}" }},' \
+            f'"player_head_{i[0]}": {{ "textures": "textures/entity/{i[0]}" }},' \
             for i in idn_lt
         )
         zhl = '\n'.join(
-            f'tile.player_head:{i}.name={i} 的头' \
+            f'tile.player_head:{i[0]}.name={i[1]} 的头'
+            for i in idn_lt
+        ) if fb else '\n'.join(
+            f'tile.player_head:{i[0]}.name={
+                data.get(i[0], i[1])[:-3]
+                if data.get(i[0], i[1])[-3] == '_'
+                else data.get(i[0], i[1])
+            } 的头'
             for i in idn_lt
         )
         enl = '\n'.join(
-            f"tile.player_head:{i}.name={i}'s Head" \
+            f"tile.player_head:{i[0]}.name={i[1]}'s Head" \
             for i in idn_lt
         )
         final = (
@@ -325,8 +347,11 @@ class Imp:
         if not stems:
             lg.error('无 png 文件！', extra={'pos': self.POS})
             return
+        stems = tuple((i, (i[:-3] if i[-3] == '_' else i)) for i in stems)
         self.terlang(stems)
-        for i in stems:
+        if argp().demo:
+            lg.info('演示模式，跳过 blotem 生成！', extra={'pos': self.POS})
+        for i, _ in stems:
             if not self.blotem(i, block_tem) and block_info:
                 lg.error(
                     '未找到模板 %s，跳过 block 生成！',
@@ -346,7 +371,19 @@ class Imp:
     @staticmethod
     def rename(re: bool=False) -> None:
         pos = 'REVERT' if re else 'RENAME'
-        if not Path('output/name.csv').is_file():
+        if Path('templates/playerheads.csv').is_file():
+            with open('templates/playerheads.csv', 'r', encoding='utf-8') as rd:
+                rd_op = reader(rd)
+                name = tuple(rd_op)
+                linum = len(str(len(name)))
+            lg.info('工作在 playerheads 模式下。', extra={'pos': pos})
+        elif Path('output/name.csv').is_file():
+            with open('output/name.csv', 'r', encoding='utf-8') as rd:
+                rd_op = reader(rd)
+                name = tuple(rd_op)
+                linum = len(str(len(name)))
+            lg.info('工作在 name 模式下。', extra={'pos': pos})
+        else:
             lg.error('未找到名称文件，跳过重命名！', extra={'pos': pos})
             return
         if Path('output/info.json').is_file():
@@ -355,12 +392,9 @@ class Imp:
         else:
             lg.warning('未找到信息文件，跳过该文件重命名！', extra={'pos': pos})
             info = ''
-        with open('output/name.csv', 'r', encoding='utf-8') as rd:
-            rd_op = DictReader(rd)
-            name = tuple(rd_op)
-            linum = len(str(len(name)))
         for i, j in enumerate(name):
-            old, new = j['old'], j['new']
+            old = j[0]
+            new = j[1] if j[1] else old
             ln = f'L{str(i+1).zfill(linum)}'
             if old != new:
                 if re:
@@ -395,7 +429,8 @@ def argp():
         help='运行模式，get、idt、imp、all，可多选，默认 get；all = get idt imp'
     )
     par.add_argument('-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作')
-    par.add_argument('-d', '--nodl', action='store_true', help='跳过下载')
+    par.add_argument('-d', '--demo', action='store_true', help='演示模式，不输出 blocks 和 items')
+    par.add_argument('-l', '--nodl', action='store_true', help='跳过下载')
     par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
     par.add_argument('-c', '--nocache', action='store_true', help='忽略缓存')
     args = par.parse_args()
