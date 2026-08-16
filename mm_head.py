@@ -45,7 +45,7 @@ class Get:
             print()
             lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
-        print(name, end='：', flush=True)
+        print(name, end=' - ', flush=True)
         return {
             'id': name,
             'location': loc,
@@ -99,11 +99,11 @@ class Get:
             dt2['id'] += f'_{self.dup[name]}'
             name = dt2['id']
             lg.warning(
-                '头颅 %s 对应多重 URL，已将新的更名为 %s。',
-                i, name,
+                '对应多重 URL，已将新的更名为 %s。',
+                name,
                 extra={'pos': f'L{self.ln} - {i}'}
             )
-            print(f'L{self.ln} - {name}：', end='', flush=True)
+            print(f'L{self.ln} - {name} - ', end='', flush=True)
             if not argp().nodl and url and \
                 not Path(f'assets/{name}.png').is_file():
                 self.dls(url, name)
@@ -132,8 +132,9 @@ class Get:
 
     def pro(self, stem: str, data: list) -> dict:
         dt = {}
+        linum = len(str(len(data)))
         for i, j in enumerate(data):
-            self.ln = i + 1
+            self.ln = str(i + 1).zfill(linum)
             if not j.strip():
                 continue
             try:
@@ -161,8 +162,6 @@ class Get:
             self.urls = []
         for f in Path('./raw').glob('*.txt'):
             stem = f.stem
-            if stem == 'terlang':
-                continue
             with open(f, 'r', encoding='utf-8') as rd:
                 data = rd.read().splitlines()
             lg.info('%s - L%s',
@@ -205,9 +204,12 @@ class Idt:
             except exceptions.Timeout:
                 print(f'超时（{i+1}/3）...', end='', flush=True)
                 sleep(1)
+            except exceptions.ConnectionError:
+                print(f'连接错误（{i+1}/3）...', end='', flush=True)
+                sleep(1)
         else:
             print()
-            lg.error('已超时。', extra={'pos': f'{msg}'})
+            lg.error('已超时。', extra={'pos': msg})
             return ''
         data = res.text
         if 'No Heads available' in data:
@@ -232,10 +234,10 @@ class Idt:
             wt_op.writeheader()
             wt_op.writerows(self.dt)
 
-    def pro(self, data: dict, ln: int) -> None:
+    def pro(self, data: dict, ln: str) -> None:
         n, m = next(iter(data.items()))
         msg = f'L{ln} - {m}'
-        print(msg, end='：', flush=True)
+        print(msg, end=' - ', flush=True)
         if (k := self.c_lt.get(m)) or k == '':
             j = k
             print('（缓存）', end='', flush=True)
@@ -269,8 +271,9 @@ class Idt:
                 with open(path, 'r', encoding='utf-8') as rd:
                     data = load(rd)['data']
                 lg.info('%s - L%s', path, len(data), extra={'pos': self.POS})
+                linum = len(str(len(data)))
                 for i, j in enumerate(data):
-                    self.pro(j, i+1)
+                    self.pro(j, str(i+1).zfill(linum))
                 self.dout()
             else:
                 lg.error('%s 不存在！', path, extra={'pos': self.POS})
@@ -342,23 +345,25 @@ class Imp:
 
     def rename(self) -> None:
         with open('output/info.json', 'r', encoding='utf-8') as rd:
-            data = rd.read()
+            info = rd.read()
         with open('output/name.csv', 'r', encoding='utf-8') as rd:
             rd_op = DictReader(rd)
-            for i, j in enumerate(rd_op):
-                old = j['old']
-                new = j['new']
-                ln = f'L{i+1}'
-                if new:
-                    if Path(f'assets/{old}.png').is_file():
-                        Path(f'assets/{old}.png').rename(f'assets/{new}.png')
-                    else:
-                        lg.warning('%s 文件不存在，已跳过。', old, extra={'pos': ln})
-                    data = data.replace(old, new)
+            name = tuple(rd_op)
+            linum = len(str(len(name)))
+        for i, j in enumerate(name):
+            old = j['old']
+            new = j['new']
+            ln = f'L{str(i+1).zfill(linum)}'
+            if new:
+                if Path(f'assets/{old}.png').is_file():
+                    Path(f'assets/{old}.png').rename(f'assets/{new}.png')
                 else:
-                    lg.warning('%s 新名称为空，已跳过。', old, extra={'pos': ln})
+                    lg.warning('%s 文件不存在，已跳过。', old, extra={'pos': ln})
+                info = info.replace(old, new)
+            else:
+                lg.warning('%s 新名称为空，已跳过。', old, extra={'pos': ln})
         with open('output/info.json', 'w', encoding='utf-8') as wt:
-            wt.write(data)
+            wt.write(info)
         lg.info('重命名完成！', extra={'pos': self.POS})
 
     def wt_op(self, path: str, con: str) -> None:
@@ -393,7 +398,7 @@ Path('./output').mkdir(parents=True, exist_ok=True)
 lg = getLogger(__name__)
 lg.setLevel(DEBUG)
 lg.handlers.clear()
-form = Formatter('%(pos)s：%(levelname)s - %(message)s')
+form = Formatter('%(pos)s - %(levelname)s - %(message)s')
 fil_h = FileHandler('output/debug.log', 'w', encoding='utf-8')
 std_h = StreamHandler()
 fil_h.setFormatter(form)
