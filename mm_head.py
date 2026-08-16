@@ -255,8 +255,8 @@ class Idt:
                 lg.warning('与 %s 拥有共同的新名称，已更名为 %s。', l, j, extra={'pos': msg})
             self.n_lt[j] = m
         else:
-            print('None', flush=True)
-            j = None
+            print(m, flush=True)
+            j = m
             lg.warning('无可用名称。', extra={'pos': msg})
         self.dt.append({'old': m, 'new': j})
 
@@ -343,28 +343,39 @@ class Imp:
                 item_info = False
         lg.info('导入数据生成完成！', extra={'pos': self.POS})
 
-    def rename(self) -> None:
-        with open('output/info.json', 'r', encoding='utf-8') as rd:
-            info = rd.read()
+    @staticmethod
+    def rename(re: bool=False) -> None:
+        pos = 'REVERT' if re else 'RENAME'
+        if not Path('output/name.csv').is_file():
+            lg.error('未找到名称文件，跳过重命名！', extra={'pos': pos})
+            return
+        if Path('output/info.json').is_file():
+            with open('output/info.json', 'r', encoding='utf-8') as rd:
+                info = rd.read()
+        else:
+            lg.warning('未找到信息文件，跳过该文件重命名！', extra={'pos': pos})
+            info = ''
         with open('output/name.csv', 'r', encoding='utf-8') as rd:
             rd_op = DictReader(rd)
             name = tuple(rd_op)
             linum = len(str(len(name)))
         for i, j in enumerate(name):
-            old = j['old']
-            new = j['new']
+            old, new = j['old'], j['new']
             ln = f'L{str(i+1).zfill(linum)}'
-            if new:
+            if old != new:
+                if re:
+                    old, new = new, old
                 if Path(f'assets/{old}.png').is_file():
                     Path(f'assets/{old}.png').replace(f'assets/{new}.png')
                 else:
                     lg.warning('%s 文件不存在，已跳过。', old, extra={'pos': ln})
                 info = info.replace(old, new)
             else:
-                lg.warning('%s 新名称为空，已跳过。', old, extra={'pos': ln})
-        with open('output/info.json', 'w', encoding='utf-8') as wt:
-            wt.write(info)
-        lg.info('重命名完成！', extra={'pos': self.POS})
+                lg.warning('%s 两名称相同，已跳过。', old, extra={'pos': ln})
+        if Path('output/info.json').is_file():
+            with open('output/info.json', 'w', encoding='utf-8') as wt:
+                wt.write(info)
+        lg.info('重命名完成！', extra={'pos': pos})
 
     def wt_op(self, path: str, con: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -372,12 +383,7 @@ class Imp:
             wt.write(con)
 
     def __init__(self) -> None:
-        if not Path('output/name.csv').is_file():
-            lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.POS})
-        elif not Path('output/info.json').is_file():
-            lg.error('未找到信息文件，跳过重命名！', extra={'pos': self.POS})
-        else:
-            self.rename()
+        self.rename()
         self.gen()
 
 def argp():
@@ -386,13 +392,18 @@ def argp():
         '-m', '--mode',
         nargs='+',
         default=['get'],
-        help='运行模式，可多选，包括 get、idt、imp，默认 get'
+        help='运行模式，get、idt、imp、all，可多选，默认 get；all = get idt imp'
     )
+    par.add_argument('-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作')
     par.add_argument('-d', '--nodl', action='store_true', help='跳过下载')
     par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
     par.add_argument('-c', '--nocache', action='store_true', help='忽略缓存')
-    # return par.parse_args(['-m', 'imp'])
-    return par.parse_args()
+    args = par.parse_args()
+    if 'all' in args.mode:
+        args.mode = ['get', 'idt', 'imp']
+    if args.revert:
+        args.mode = []
+    return args
 
 Path('./output').mkdir(parents=True, exist_ok=True)
 lg = getLogger(__name__)
@@ -416,6 +427,9 @@ if __name__ == '__main__':
             print()
         if 'imp' in argp().mode:
             Imp()
+            print()
+        if argp().revert:
+            Imp.rename(True)
             print()
     except Exception:
         lg.exception('未知错误。', extra={'pos': __name__})
