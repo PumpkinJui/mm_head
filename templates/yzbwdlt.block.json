@@ -6,7 +6,7 @@
             "menu_category": { "category": "items", "group": "minecraft:itemGroup.name.skull" },
             "traits": {
                 "minecraft:placement_direction": {
-                    "enabled_states": ["minecraft:cardinal_direction", "minecraft:sixteen_way_rotation"],
+                    "enabled_states": ["minecraft:sixteen_way_rotation"],
                 },
                 "minecraft:placement_position": {
                     "enabled_states": ["minecraft:block_face"]
