@@ -26,7 +26,7 @@ class Get:
         trans = str.maketrans(' ', '_', '()')
         loc = search(r' ([\d\-. ]+) ', data).group(1)
         if 'rotation' in data:
-            rot = search(r'rotation=(\d+)', data).group(1)
+            rot = int(search(r'rotation=(\d+)', data).group(1))
         elif 'facing' in data:
             fac = search(r'facing=([^,\]]+)', data).group(1)
         if 'value' in data:
