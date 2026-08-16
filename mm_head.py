@@ -19,6 +19,8 @@ from requests import exceptions, get
 
 
 class Get:
+    POS = 'GET'
+
     def ext(self, data: str) -> dict:
         fac, rot, url = None, None, None
         trans = str.maketrans(' ', '_', '()')
@@ -134,15 +136,14 @@ class Get:
         return dt
 
     def __init__(self) -> None:
-        self.pos = self.__class__.__name__.upper()
         dt = {}
         f = None
         if argp().nodl:
-            lg.info('跳过下载已开启。', extra={'pos': self.pos})
+            lg.info('跳过下载已开启。', extra={'pos': self.POS})
         else:
             Path('assets').mkdir(parents=True, exist_ok=True)
         if argp().nourl:
-            lg.info('跳过 URL 记录已开启。', extra={'pos': self.pos})
+            lg.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
         else:
             self.urls = []
         for f in Path('./raw').glob('*.txt'):
@@ -153,11 +154,11 @@ class Get:
                 data = rd.read().splitlines()
             lg.info('%s - L%s',
                 stem, len(data),
-                extra={'pos': self.pos}
+                extra={'pos': self.POS}
             )
             dt |= self.prune(self.pro(stem, data))
         if not f:
-            lg.warning('未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.pos})
+            lg.warning('未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS})
             data = [input('输入待处理项：')]
             dt = self.pro('info', data)
         with open('output/info.json', 'w', encoding='utf-8') as wt:
@@ -173,10 +174,12 @@ class Get:
             urls = {'data': urls}
             with open('output/url.json', 'w', encoding='utf-8') as wt:
                 dump(urls, wt)
-        lg.info('信息提取完成！', extra={'pos': self.pos})
+        lg.info('信息提取完成！', extra={'pos': self.POS})
 
 class Idt:
-    def ext(self, url: str) -> str:
+    POS = 'IDT'
+
+    def ext(self, url: str, msg: str) -> str:
         sleep(0.2)
         for i in range(3):
             try:
@@ -191,7 +194,7 @@ class Idt:
                 sleep(1)
         else:
             print()
-            lg.error('已超时。', extra={'pos': f'{self.msg}'})
+            lg.error('已超时。', extra={'pos': f'{msg}'})
             return ''
         data = res.text
         if 'No Heads available' in data:
@@ -201,12 +204,12 @@ class Idt:
 
     def cache(self) -> dict:
         if argp().nocache:
-            lg.info('缓存已忽略！', extra={'pos': self.pos})
+            lg.info('缓存已忽略！', extra={'pos': self.POS})
             return {}
         if not Path('output/cache.json').is_file():
             return {}
         with open('output/cache.json', 'r', encoding='utf-8') as rd:
-            lg.info('缓存已加载！', extra={'pos': self.pos})
+            lg.info('缓存已加载！', extra={'pos': self.POS})
             return load(rd)
 
     def dout(self) -> None:
@@ -216,63 +219,56 @@ class Idt:
             wt_op.writeheader()
             wt_op.writerows(self.dt)
 
-    def pro(self, data: dict) -> None:
+    def pro(self, data: dict, ln: int) -> None:
         n, m = next(iter(data.items()))
-        self.msg = f'L{self.ln} - {m}'
-        print(self.msg, end='：', flush=True)
+        msg = f'L{ln} - {m}'
+        print(msg, end='：', flush=True)
         if (k := self.c_lt.get(m)) or k == '':
             j = k
             print('（缓存）', end='', flush=True)
         else:
-            j = self.ext(n)
+            j = self.ext(n, msg)
             self.c_lt[m] = j
         if j:
             j = j.translate(str.maketrans(' ', '_', '()')).lower() + '_' + n[4:6]
             print(j, flush=True)
-            if j in self.n_lt:
-                if self.dup.get(j):
-                    self.dup[j] += 1
-                else:
-                    self.dup[j] = 1
+            if l := self.n_lt.get(j):
+                self.dup[j] = self.dup.get(j, 0) + 1
                 k = j
                 j = j + f'_{self.dup[j]}'
-                lg.warning(
-                    '与 %s 拥有共同的新名称，已更名为 %s。',
-                    next(iter(self.data[self.n_lt.index(k)].values())), j,
-                    extra={'pos': self.msg}
-                )
-            self.n_lt.append(j)
+                lg.warning('与 %s 拥有共同的新名称，已更名为 %s。', l, j, extra={'pos': msg})
+            self.n_lt[j] = m
         else:
             print('None', flush=True)
             j = None
-            lg.warning('无可用名称。', extra={'pos': self.msg})
+            lg.warning('无可用名称。', extra={'pos': msg})
         self.dt.append({'old': m, 'new': j})
 
     def __init__(self) -> None:
-        self.pos = self.__class__.__name__.upper()
-        self.dt = []
-        self.n_lt = []
-        self.dup = {}
         self.c_lt = self.cache()
+        self.dt = []
+        self.dup = {}
+        self.n_lt = {}
         try:
             path = 'output/url.json'
             if Path(path).is_file():
                 with open(path, 'r', encoding='utf-8') as rd:
-                    self.data = load(rd)['data']
-                lg.info('%s - L%s', path, len(self.data), extra={'pos': self.pos})
-                for i, j in enumerate(self.data):
-                    self.ln = i + 1
-                    self.pro(j)
+                    data = load(rd)['data']
+                lg.info('%s - L%s', path, len(data), extra={'pos': self.POS})
+                for i, j in enumerate(data):
+                    self.pro(j, i+1)
                 self.dout()
             else:
-                lg.error('%s 不存在！', path, extra={'pos': self.pos})
-            lg.info('名称对照完成！', extra={'pos': self.pos})
+                lg.error('%s 不存在！', path, extra={'pos': self.POS})
+            lg.info('名称对照完成！', extra={'pos': self.POS})
         finally:
             with open('output/cache.json', 'w', encoding='utf-8') as wt:
                 dump(self.c_lt, wt)
-                lg.info('缓存已输出！', extra={'pos': self.pos})
+                lg.info('缓存已输出！', extra={'pos': self.POS})
 
 class Imp:
+    POS = 'IMP'
+
     def blotem(self, idn: str, templ: str) -> bool:
         if not Path(templ).is_file():
             return False
@@ -310,7 +306,7 @@ class Imp:
         block_info, item_info = True, True
         stems = tuple(i.stem for i in Path('./assets').glob('*.png'))
         if not stems:
-            lg.error('无 png 文件！', extra={'pos': self.pos})
+            lg.error('无 png 文件！', extra={'pos': self.POS})
             return
         self.terlang(stems)
         for i in stems:
@@ -318,17 +314,17 @@ class Imp:
                 lg.error(
                     '未找到模板 %s，跳过 block 生成！',
                     block_tem,
-                    extra={'pos': self.pos}
+                    extra={'pos': self.POS}
                 )
                 block_info = False
             if not self.blotem(i, item_tem) and item_info:
                 lg.error(
                     '未找到模板 %s，跳过 item 生成！',
                     item_tem,
-                    extra={'pos': self.pos}
+                    extra={'pos': self.POS}
                 )
                 item_info = False
-        lg.info('导入数据生成完成！', extra={'pos': self.pos})
+        lg.info('导入数据生成完成！', extra={'pos': self.POS})
 
     def rename(self) -> None:
         with open('output/info.json', 'r', encoding='utf-8') as rd:
@@ -349,7 +345,7 @@ class Imp:
                     lg.warning('%s 新名称为空，已跳过。', old, extra={'pos': ln})
         with open('output/info.json', 'w', encoding='utf-8') as wt:
             wt.write(data)
-        lg.info('重命名完成！', extra={'pos': self.pos})
+        lg.info('重命名完成！', extra={'pos': self.POS})
 
     def wt_op(self, path: str, con: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -357,11 +353,10 @@ class Imp:
             wt.write(con)
 
     def __init__(self) -> None:
-        self.pos = self.__class__.__name__.upper()
         if not Path('output/name.csv').is_file():
-            lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
+            lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.POS})
         elif not Path('output/info.json').is_file():
-            lg.error('未找到信息文件，跳过重命名！', extra={'pos': self.pos})
+            lg.error('未找到信息文件，跳过重命名！', extra={'pos': self.POS})
         else:
             self.rename()
         self.gen()
@@ -405,4 +400,6 @@ if __name__ == '__main__':
             print()
     except Exception:
         lg.exception('未知错误。', extra={'pos': __name__})
+    finally:
+        _ = input('按回车退出...')
 shutdown()
