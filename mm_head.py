@@ -15,6 +15,7 @@ from pathlib import Path
 from re import search, sub
 from time import sleep
 
+from PIL import Image
 from requests import exceptions, get
 
 
@@ -60,6 +61,14 @@ class Get:
         }
 
     def dls(self, url: str, name: str) -> bool:
+        img_path = self.img_dir / f'{name}.png'
+        if argp().nodl or not url or img_path.is_file():
+            print('跳过下载...', end='', flush=True)
+            if self.rect(img_path):
+                print('成功！', flush=True)
+            else:
+                print()
+            return False
         print('开始下载...', end='', flush=True)
         for i in range(3):
             try:
@@ -75,20 +84,30 @@ class Get:
             print()
             lg.error('已超时。', extra={'pos': f'L{self.ln} - {name}'})
             return False
-        with open(f'output/RP/textures/entity/{name}.png', 'wb') as png:
+        with open(img_path, 'wb') as png:
             png.write(img.content)
+        self.rect(img_path)
         print('成功！', flush=True)
+        return True
+
+    def rect(self, img_path) -> bool:
+        temp_path = img_path.with_name(img_path.name + '.tmp')
+        with Image.open(img_path) as img:
+            if img.size != (64, 32):
+                return False
+            print('转换中...', end='', flush=True)
+            img = img.convert('RGBA')
+            new_img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+            new_img.paste(img, (0, 0), img)
+            new_img.save(temp_path, format='PNG')
+        temp_path.replace(img_path)
         return True
 
     def merge(self, dt1: dict, dt2: dict, stem: str) -> dict:
         if not dt2:
             return dt1
         name, url = dt2['id'], dt2['url']
-        if not argp().nodl and url and \
-            not Path(f'output/RP/textures/entity/{name}.png').is_file():
-            self.dls(url, name)
-        else:
-            print('跳过下载...', flush=True)
+        self.dls(url, name)
         if dt1.get(stem):
             dt3 = {i['location']: i['id'] for i in dt1[stem]}
             if not (idn := dt3.get(dt2['location'])):
@@ -112,11 +131,7 @@ class Get:
                 extra={'pos': f'L{self.ln} - {i}'}
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
-            if not argp().nodl and url and \
-                not Path(f'output/RP/textures/entity/{name}.png').is_file():
-                self.dls(url, name)
-            else:
-                print('跳过下载...', flush=True)
+            self.dls(url, name)
         self.n_lt[name] = url
         return dt1
 
@@ -161,12 +176,13 @@ class Get:
     def __init__(self) -> None:
         self.dup = {}
         self.n_lt = {}
+        self.img_dir = Path('output/RP/textures/entity')
         dt = {}
         f = None
         if argp().nodl:
             lg.info('跳过下载已开启。', extra={'pos': self.POS})
         else:
-            Path('output/RP/textures/entity').mkdir(parents=True, exist_ok=True)
+            self.img_dir.mkdir(parents=True, exist_ok=True)
         if argp().nourl:
             lg.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
         else:
@@ -377,8 +393,9 @@ class Imp:
     def gen(self) -> None:
         block_tem = 'templates/yzbwdlt.block.json'
         item_tem = 'templates/yzbwdlt.item.json'
+        img_dir = Path('output/RP/textures/entity')
         block_info, item_info = True, True
-        stems = tuple(i.stem for i in Path('output/RP/textures/entity').glob('*.png'))
+        stems = tuple(i.stem for i in img_dir.glob('*.png'))
         if not stems:
             lg.error('无 png 文件！', extra={'pos': self.POS})
             return
@@ -406,6 +423,7 @@ class Imp:
     @staticmethod
     def rename(re: bool=False) -> None:
         pos = 'REVERT' if re else 'RENAME'
+        img_dir = Path('output/RP/textures/entity')
         if Path('templates/playerheads.csv').is_file():
             with open('templates/playerheads.csv', 'r', encoding='utf-8') as rd:
                 rd_op = reader(rd)
@@ -430,18 +448,22 @@ class Imp:
         for i, j in enumerate(name):
             old = j[0]
             new = j[1] if j[1] else old
-            ln = f'L{str(i+1).zfill(linum)}'
+            msg = f'L{str(i+1).zfill(linum)} - {old}'
             if old != new:
                 if re:
+                    msg = msg.replace(old, new)
                     old, new = new, old
-                if Path(f'output/RP/textures/entity/{old}.png').is_file():
-                    Path(f'output/RP/textures/entity/{old}.png') \
-                        .replace(f'output/RP/textures/entity/{new}.png')
+                old_path = img_dir / f'{old}.png'
+                new_path = img_dir / f'{new}.png'
+                if new_path.is_file():
+                    lg.warning('新文件 %s 存在，已覆盖。', new, extra={'pos': msg})
+                if old_path.is_file():
+                    old_path.replace(new_path)
                 else:
-                    lg.warning('%s 文件不存在，已跳过。', old, extra={'pos': ln})
+                    lg.warning('文件不存在，已跳过。', extra={'pos': msg})
                 info = info.replace(old, new)
             else:
-                lg.warning('%s 两名称相同，已跳过。', old, extra={'pos': ln})
+                lg.warning('两名称相同，已跳过。', extra={'pos': msg})
         if Path('output/info.json').is_file():
             with open('output/info.json', 'w', encoding='utf-8') as wt:
                 wt.write(info)
