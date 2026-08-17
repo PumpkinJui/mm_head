@@ -18,6 +18,8 @@
 /setblock 937 59 2918 minecraft:player_head[powered=false,rotation=9]{components:{},profile:{id:[I;-1386571733,-181386710,-1284761149,684076743],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2ZDhkZWU2M2I3NjllODVkNGI2ZDRlZGE3ZDJkYTdiNTQ2NWFhNjZjMThmMTMxZDVlYjliYWI4NDNmIn19fQ=="}]}}
 /setblock 939 59 2919 minecraft:player_head[powered=false,rotation=10]{components:{},profile:{id:[I;-1386571733,-181386710,-1284761149,684076743],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2ZDhkZWU2M2I3NjllODVkNGI2ZDRlZGE3ZDJkYTdiNTQ2NWFhNjZjMThmMTMxZDVlYjliYWI4NDNmIn19fQ=="}]}}
 
+/setblock 939 60 2925 minecraft:player_wall_head[facing=west,powered=false]{components:{},profile:{id:[I;-1288415544,-2123937956,-1337362916,-1677827769],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODc5MzQ1NjViZjUyMmY2ZjQ3MjZjZGZlMTI3MTM3YmUxMWQzN2MzMTBkYjM0ZDhjNzAyNTMzOTJiNWZmNWIifX19"}]}}
+
 /setblock 923 62 2912 minecraft:player_head[powered=false,rotation=6]{components:{},profile:{id:[I;-1386571733,-181386710,-1284761149,684076743],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2ZDhkZWU2M2I3NjllODVkNGI2ZDRlZGE3ZDJkYTdiNTQ2NWFhNjZjMThmMTMxZDVlYjliYWI4NDNmIn19fQ=="}]}}
 
 /setblock 910 62 2911 minecraft:player_head[powered=false,rotation=9]{components:{},profile:{id:[I;-1386571733,-181386710,-1284761149,684076743],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2ZDhkZWU2M2I3NjllODVkNGI2ZDRlZGE3ZDJkYTdiNTQ2NWFhNjZjMThmMTMxZDVlYjliYWI4NDNmIn19fQ=="}]}}
@@ -32,6 +34,7 @@
 /setblock 895 60 2931 minecraft:player_head[powered=false,rotation=1]{components:{},profile:{id:[I;-1386571733,-181386710,-1284761149,684076743],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2ZDhkZWU2M2I3NjllODVkNGI2ZDRlZGE3ZDJkYTdiNTQ2NWFhNjZjMThmMTMxZDVlYjliYWI4NDNmIn19fQ=="}]}}
 /setblock 891 60 2931 minecraft:player_head[powered=false,rotation=13]{components:{},profile:{id:[I;-1386571733,-181386710,-1284761149,684076743],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2ZDhkZWU2M2I3NjllODVkNGI2ZDRlZGE3ZDJkYTdiNTQ2NWFhNjZjMThmMTMxZDVlYjliYWI4NDNmIn19fQ=="}]}}
 /setblock 889 60 2931 minecraft:player_wall_head[facing=east,powered=false]{components:{},profile:{id:[I;-1288415544,-2123937956,-1337362916,-1677827769],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODc5MzQ1NjViZjUyMmY2ZjQ3MjZjZGZlMTI3MTM3YmUxMWQzN2MzMTBkYjM0ZDhjNzAyNTMzOTJiNWZmNWIifX19"}]}}
+/setblock 888 60 2933 minecraft:player_head[powered=false,rotation=7]{components:{},profile:{id:[I;-1386571733,-181386710,-1284761149,684076743],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2ZDhkZWU2M2I3NjllODVkNGI2ZDRlZGE3ZDJkYTdiNTQ2NWFhNjZjMThmMTMxZDVlYjliYWI4NDNmIn19fQ=="}]}}
 
 
 
@@ -60,3 +63,11 @@
 
 
 /setblock 907 61 2864 minecraft:player_head[powered=false,rotation=12]{components:{},profile:{id:[I;634227314,2025998851,-1819618053,719320628],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTk1NTkzODg5OTNmZTc4MmY2N2JkNThkOThjNGRmNTZiY2Q0MzBlZGNiMmY2NmVmNTc3N2E3M2MyN2RlMyJ9fX0="}]}}
+
+
+
+
+
+
+/setblock 898 59 2963 minecraft:player_wall_head[facing=north,powered=false]{components:{},profile:{id:[I;-1335691432,1023889088,-1162297107,1294061097],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMWM4MmQ1NDk1NzJlNmZlN2Q4M2U2ZjQwY2Y3ODMwN2M0ZDk2NjhjZGVjZmE2MTE5NTlkMTYwOTc5MTgyNGIifX19"}]}}
+/setblock 898 59 2965 minecraft:player_wall_head[facing=south,powered=false]{components:{},profile:{id:[I;-1335691432,1023889088,-1162297107,1294061097],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMWM4MmQ1NDk1NzJlNmZlN2Q4M2U2ZjQwY2Y3ODMwN2M0ZDk2NjhjZGVjZmE2MTE5NTlkMTYwOTc5MTgyNGIifX19"}]}}
