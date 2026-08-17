@@ -1,0 +1,20 @@
+/setblock 1102 36 -4026 minecraft:player_head[powered=false,rotation=6]{components:{},profile:{id:[I;267720929,961235757,-1901054700,1099138498],name:"",properties:[{name:"textures",value:"eyJ0aW1lc3RhbXAiOjE0ODc5NjUyMTUwNjcsInByb2ZpbGVJZCI6ImQ0NTdhOTMxMjZjYjQzOThiYjQzYzkwOWJkYTExMzg0IiwicHJvZmlsZU5hbWUiOiJzYW5zXyIsInNpZ25hdHVyZVJlcXVpcmVkIjp0cnVlLCJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTViNTI4NDQ2YTA5NjFlMmI4Y2ViNTRhOTRmNzhjMjU5NjJlOWM2MzVhZTM1ZmZiNTcyOTUxNmRiZDUzYzMifX19"}]}}
+
+
+
+
+
+/setblock 1118 92 -4032 minecraft:player_head[powered=false,rotation=5]{components:{},profile:{id:[I;-1102349225,-333494663,-1567076989,2060007907],name:"",properties:[{name:"textures",value:"eyJ0aW1lc3RhbXAiOjE0ODc4MTgyMDg3NDQsInByb2ZpbGVJZCI6IjQ3MjE0ZDQ4ZTcyYTRhZmI5Y2EzN2VkMjhjNmQxMDgzIiwicHJvZmlsZU5hbWUiOiJCb29rcyIsInNpZ25hdHVyZVJlcXVpcmVkIjp0cnVlLCJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTBiZDczZDhmNmMwZTJlMTk3NTQ0Mjk3MjhiMDFmZGNiYWJhZThmYTYxNTBiOTkyNmVhZGY5ZTFiYTUwODIxZiJ9fX0="}]}}
+
+/setblock 1103 94 -4053 minecraft:player_head[powered=true,rotation=7]{components:{},profile:{id:[I;556960661,682049930,-1281379239,-973670261],name:"",properties:[{name:"textures",value:"eyJ0aW1lc3RhbXAiOjE0ODc4MjAwMjU0MTIsInByb2ZpbGVJZCI6ImM1ZGUzYzkyYTcwNTQ0YmY4NWUxNzY1YTA4YWFhZmNjIiwicHJvZmlsZU5hbWUiOiJXb2xmeSIsInNpZ25hdHVyZVJlcXVpcmVkIjp0cnVlLCJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODYyNDdiYzMyZWRlOTZlYmE3NWRmZTE3YjcyNTYyYTA3NTE4MDE1MmFiZTUxZGFmNWJmMzkzYjQ0Mzk3ZCJ9fX0="}]}}
+
+
+
+
+
+/setblock 1121 102 -4036 minecraft:player_head[powered=false,rotation=14]{components:{},profile:{id:[I;2141788501,478299919,-2051021585,-1982577534],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjI5NjAzZDgyOTYzMDU2YmUxMzUyMmNmYjdkNDUyMGM3NmJhNjg3ZjM5NmEwZGFiMTI1ZTYzYjVkYWNlYTgifX19"}]}}
+
+/setblock 1116 101 -4035 minecraft:player_head[powered=false,rotation=15]{components:{},profile:{id:[I;-205822494,1533758403,-1464199157,-1456928270],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDc3ZGQ4NDJjOTc1ZDhmYjAzYjFhZGQ2NmRiODM3N2ExOGJhOTg3MDUyMTYxZjIyNTkxZTZhNGVkZTdmNSJ9fX0="}]}}
+/setblock 1115 101 -4036 minecraft:player_head[powered=false,rotation=1]{components:{},profile:{id:[I;-205822494,1533758403,-1464199157,-1456928270],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDc3ZGQ4NDJjOTc1ZDhmYjAzYjFhZGQ2NmRiODM3N2ExOGJhOTg3MDUyMTYxZjIyNTkxZTZhNGVkZTdmNSJ9fX0="}]}}
+
+/setblock 1112 102 -4040 minecraft:player_head[powered=false,rotation=15]{components:{},profile:{id:[I;-1872378866,-2093527945,-1765278813,1491661779],name:"",properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjM0ODdkNDU3ZjkwNjJkNzg3YTNlNmNlMWM0NjY0YmY3NDAyZWM2N2RkMTExMjU2ZjE5YjM4Y2U0ZjY3MCJ9fX0="}]}}
