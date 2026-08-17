@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from base64 import urlsafe_b64decode as b64d
 from csv import reader, writer
-from json import dump, load, loads
+from json import dump, dumps, load, loads
 from logging import (
     DEBUG,
     WARNING,
@@ -25,6 +25,7 @@ class Get:
     def ext(self, data: str) -> dict:
         fac, rot, url = None, None, None
         trans = str.maketrans(' -', '__', '()')
+        mname = True
         loc = search(r' ([\d\-. ]+) ', data).group(1)
         if 'rotation' in data:
             rot = int(search(r'rotation=(\d+)', data).group(1))
@@ -39,6 +40,7 @@ class Get:
                 .translate(trans).lower()
             if not name or name == 'textures':
                 name = url[url.rfind('/')+1:url.rfind('/')+7]
+                mname = False
         elif 'head:' in data:
             name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1) \
                 .translate(trans).lower()
@@ -57,7 +59,8 @@ class Get:
             'location': loc,
             'rotation': rot,
             'facing': fac,
-            'url': url
+            'url': url,
+            'meaningful': mname
         }
 
     def dls(self, url: str, name: str) -> bool:
@@ -107,7 +110,6 @@ class Get:
         if not dt2:
             return dt1
         name, url = dt2['id'], dt2['url']
-        u_lt = {j: i for i, j in self.n_lt.items()}
         self.dls(url, name)
         if dt1.get(stem):
             dt3 = {i['location']: i['id'] for i in dt1[stem]}
@@ -121,10 +123,10 @@ class Get:
                 )
         else:
             dt1[stem] = [dt2]
-        if self.n_lt.get(name, url) != url:
+        if self.n_lt.get(name, [url])[0] != url:
             old = name
             i = 0
-            while self.n_lt.get(name, url) != url:
+            while self.n_lt.get(name, [url])[0] != url:
                 i += 1
                 name = f'{name}_{i}' if i == 1 else f'{name[:name.rfind('_')]}_{i}'
             dt2['id'] = name
@@ -135,15 +137,7 @@ class Get:
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
             self.dls(url, name)
-        if u_lt.get(url, name) != name:
-            dt2['id'] = u_lt.get(url)
-            lg.warning(
-                'URL 对应多重名称，已将新的统一为 %s。',
-                dt2['id'],
-                extra={'pos': f'L{self.ln} - {name}'}
-            )
-            name = dt2['id']
-        self.n_lt[name] = url
+        self.n_lt[name] = (url, dt2['meaningful'])
         return dt1
 
     def prune(self, dt: dict) -> dict:
@@ -158,6 +152,7 @@ class Get:
                 ]
             for k in j:
                 k.pop('url')
+                k.pop('meaningful')
                 l = [m for m, n in k.items() if not n and n != 0]
                 for m in l:
                     k.pop(m)
@@ -183,6 +178,35 @@ class Get:
                 lg.exception('未知错误。', extra={'pos': f'L{self.ln}'})
         print()
         return dt
+
+    def out(self, dt: dict, urls: dict) -> None:
+        data = dumps(dt, indent=4)
+        u_lt = tuple((i, j, k) for i, (j, k) in self.n_lt.items())
+        names = {}
+        for name, url, mname in u_lt:
+            if mname:
+                names[url] = name
+        for name, url, mname in u_lt:
+            if (nurl := names.get(url)) and name != nurl:
+                data = data.replace(f'"{name}"',f'"{nurl}"')
+                lg.warning(
+                    'URL 对应多重名称，已将新的统一为 %s。',
+                    nurl,
+                    extra={'pos': f'{name}'}
+                )
+                (self.img_dir / f'{name}.png').replace(self.img_dir / f'{nurl}.png')
+        with open('output/info.json', 'w', encoding='utf-8') as wt:
+            wt.write(data)
+        if not argp().nourl:
+            past = set()
+            urlsn = []
+            for i in urls:
+                j = tuple(sorted(i.items()))
+                if j not in past:
+                    past.add(j)
+                    urlsn.append(i)
+            with open('output/url.json', 'w', encoding='utf-8') as wt:
+                dump(urlsn, wt, indent=4)
 
     def __init__(self) -> None:
         self.n_lt = {}
@@ -212,18 +236,7 @@ class Get:
             lg.warning('未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS})
             data = [input('输入待处理项：')]
             dt = self.prune(self.pro('info', data))
-        with open('output/info.json', 'w', encoding='utf-8') as wt:
-            dump(dt, wt, indent=4)
-        if not argp().nourl:
-            past = set()
-            urlsn = []
-            for i in urls:
-                j = tuple(sorted(i.items()))
-                if j not in past:
-                    past.add(j)
-                    urlsn.append(i)
-            with open('output/url.json', 'w', encoding='utf-8') as wt:
-                dump(urlsn, wt, indent=4)
+        self.out(dt, urls)
         lg.info('信息提取完成！', extra={'pos': self.POS})
 
 class Idt:
@@ -349,23 +362,23 @@ class Imp:
         )
         zhl = '\n'.join(
             f'tile.player_head:{i[0]}.name={
-                i[1][:i[1].rfind('_')].title()
-                if '_' in {i[1][-2], i[1][-3]}
+                i[1][:-2].title()
+                if '_' == i[1][-2]
                 else i[1].title()
             } 的头'
             for i in idn_lt
         ) if fb else '\n'.join(
             f'tile.player_head:{i[0]}.name={
-                data.get(i[0], i[1])[:data.get(i[0], i[1]).rfind('_')].title()
-                if '_' in {data.get(i[0], i[1])[-2], data.get(i[0], i[1])[-3]}
+                data.get(i[0], i[1])[:-2].title()
+                if '_' == data.get(i[0], i[1])[-2]
                 else data.get(i[0], i[1]).title()
             } 的头'
             for i in idn_lt
         )
         enl = '\n'.join(
             f"tile.player_head:{i[0]}.name={
-                i[1][:i[1].rfind('_')].title()
-                if '_' in {i[1][-2], i[1][-3]}
+                i[1][:-2].title()
+                if '_' == i[1][-2]
                 else i[1].title()
             }'s Head"
             for i in idn_lt
