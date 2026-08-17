@@ -107,6 +107,7 @@ class Get:
         if not dt2:
             return dt1
         name, url = dt2['id'], dt2['url']
+        u_lt = {j: i for i, j in self.n_lt.items()}
         self.dls(url, name)
         if dt1.get(stem):
             dt3 = {i['location']: i['id'] for i in dt1[stem]}
@@ -134,6 +135,14 @@ class Get:
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
             self.dls(url, name)
+        if u_lt.get(url, name) != name:
+            dt2['id'] = u_lt.get(url)
+            lg.warning(
+                'URL 对应多重名称，已将新的统一为 %s。',
+                dt2['id'],
+                extra={'pos': f'L{self.ln} - {name}'}
+            )
+            name = dt2['id']
         self.n_lt[name] = url
         return dt1
 
