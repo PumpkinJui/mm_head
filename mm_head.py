@@ -361,26 +361,18 @@ class Imp:
             for i in idn_lt
         )
         zhl = '\n'.join(
-            f'tile.player_head:{i[0]}.name={
-                i[1][:-2].title()
-                if '_' == i[1][-2]
-                else i[1].title()
-            } 的头'
+            f'tile.player_head:{i[0]}.name={i[1].title()} 的头'
             for i in idn_lt
         ) if fb else '\n'.join(
             f'tile.player_head:{i[0]}.name={
-                data.get(i[0], i[1])[:-2].title()
-                if '_' == data.get(i[0], i[1])[-2]
+                data.get(i[0], i[0])[:data.get(i[0], i[0]).rfind('_')].title()
+                if '_' in {data.get(i[0], i[0])[-3], data.get(i[0], i[0])[-2]}
                 else data.get(i[0], i[1]).title()
             } 的头'
             for i in idn_lt
         )
         enl = '\n'.join(
-            f"tile.player_head:{i[0]}.name={
-                i[1][:-2].title()
-                if '_' == i[1][-2]
-                else i[1].title()
-            }'s Head"
+            f"tile.player_head:{i[0]}.name={i[1].title()}'s Head"
             for i in idn_lt
         )
         ter_full = (
@@ -424,7 +416,7 @@ class Imp:
         if not stems:
             lg.error('无 png 文件！', extra={'pos': self.POS})
             return
-        stems = tuple((i, (i[:-3] if i[-3] == '_' else i)) for i in stems)
+        stems = tuple((i, (i[:i.rfind('_')] if '_' in {i[-3], i[-2]} else i)) for i in stems)
         self.terlang(stems)
         if argp().demo:
             lg.info('演示模式，跳过 blotem 生成！', extra={'pos': self.POS})
