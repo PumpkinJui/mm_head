@@ -235,7 +235,9 @@ class Get:
         if not f:
             lg.warning('未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS})
             data = [input('输入待处理项：')]
-            dt = self.prune(self.pro('info', data))
+            dt, url = self.prune(self.pro('info', data))
+            if url:
+                urls.extend(url)
         self.out(dt, urls)
         lg.info('信息提取完成！', extra={'pos': self.POS})
 
