@@ -121,14 +121,16 @@ class Get:
         else:
             dt1[stem] = [dt2]
         if self.n_lt.get(name, url) != url:
-            self.dup[name] = self.dup.get(name, 0) + 1
-            i = name
-            dt2['id'] += f'_{self.dup[name]}'
-            name = dt2['id']
+            old = name
+            i = 0
+            while self.n_lt.get(name, url) != url:
+                i += 1
+                name = f'{name}_{i}' if i == 1 else f'{name[:name.rfind('_')]}_{i}'
+            dt2['id'] = name
             lg.warning(
                 '对应多重 URL，已将新的更名为 %s。',
                 name,
-                extra={'pos': f'L{self.ln} - {i}'}
+                extra={'pos': f'L{self.ln} - {old}'}
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
             self.dls(url, name)
@@ -137,6 +139,7 @@ class Get:
 
     def prune(self, dt: dict) -> dict:
         dtn = {}
+        url = []
         for i, j in dt.items():
             dtn[i] = []
             if not argp().nourl:
@@ -144,14 +147,13 @@ class Get:
                     "https://textures.minecraft.net/texture/", ""
                     )}': k['id']} for k in j if k['url']
                 ]
-                self.urls.extend(url)
             for k in j:
                 k.pop('url')
                 l = [m for m, n in k.items() if not n and n != 0]
                 for m in l:
                     k.pop(m)
                 dtn[i].append(k)
-        return dtn
+        return dtn, url
 
     def pro(self, stem: str, data: list) -> dict:
         dt = {}
@@ -174,19 +176,17 @@ class Get:
         return dt
 
     def __init__(self) -> None:
-        self.dup = {}
         self.n_lt = {}
         self.img_dir = Path('output/RP/textures/entity')
         dt = {}
         f = None
+        urls = []
         if argp().nodl:
             lg.info('跳过下载已开启。', extra={'pos': self.POS})
         else:
             self.img_dir.mkdir(parents=True, exist_ok=True)
         if argp().nourl:
             lg.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
-        else:
-            self.urls = []
         for f in Path('raw').glob('*.txt'):
             stem = f.stem
             with open(f, 'r', encoding='utf-8') as rd:
@@ -195,7 +195,10 @@ class Get:
                 stem, len(data),
                 extra={'pos': self.POS}
             )
-            dt |= self.prune(self.pro(stem, data))
+            dtn, url = self.prune(self.pro(stem, data))
+            dt |= dtn
+            if url:
+                urls.extend(url)
         if not f:
             lg.warning('未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS})
             data = [input('输入待处理项：')]
@@ -204,14 +207,14 @@ class Get:
             dump(dt, wt, indent=4)
         if not argp().nourl:
             past = set()
-            urls = []
-            for i in self.urls:
+            urlsn = []
+            for i in urls:
                 j = tuple(sorted(i.items()))
                 if j not in past:
                     past.add(j)
-                    urls.append(i)
+                    urlsn.append(i)
             with open('output/url.json', 'w', encoding='utf-8') as wt:
-                dump(urls, wt, indent=4)
+                dump(urlsn, wt, indent=4)
         lg.info('信息提取完成！', extra={'pos': self.POS})
 
 class Idt:
