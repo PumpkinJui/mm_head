@@ -100,6 +100,13 @@ class Get:
                 return False
             print('转换中...', end='', flush=True)
             img = img.convert('RGBA')
+            if 'thegreatergod' in str(img_path):
+                print('thelesserdog...', end='', flush=True)
+                pix = img.load()
+                for w in range(31, 64):
+                    for h in range(16):
+                        if pix[w, h] == (255, 255, 255, 255):
+                            pix[w, h] = (0, 0, 0, 0)
             new_img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
             new_img.paste(img, (0, 0), img)
             new_img.save(temp_path, format='PNG')
