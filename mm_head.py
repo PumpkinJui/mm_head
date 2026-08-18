@@ -146,8 +146,9 @@ class Get:
         for i, j in dt.items():
             dtn[i] = []
             if not argp().nourl:
-                url = [{f'url:{k["url"].replace(
-                    "https://textures.minecraft.net/texture/", ""
+                url = [
+                    {f'url:{k["url"].replace(
+                        "https://textures.minecraft.net/texture/", ""
                     )}': k['id']} for k in j if k['url']
                 ]
             for k in j:
@@ -179,8 +180,9 @@ class Get:
         print()
         return dt
 
-    def out(self, dt: dict, urls: dict) -> None:
+    def out(self, dt: dict, urls: list) -> None:
         data = dumps(dt, indent=4)
+        dup = {}
         u_lt = tuple((i, j, k) for i, (j, k) in self.n_lt.items())
         names = {}
         for name, url, mname in u_lt:
@@ -188,6 +190,7 @@ class Get:
                 names[url] = name
         for name, url, mname in u_lt:
             if (nurl := names.get(url)) and name != nurl:
+                dup[name] = nurl
                 data = data.replace(f'"{name}"',f'"{nurl}"')
                 lg.warning(
                     'URL 对应多重名称，已将新的统一为 %s。',
@@ -199,14 +202,17 @@ class Get:
             wt.write(data)
         if not argp().nourl:
             past = set()
-            urlsn = []
+            urln = []
             for i in urls:
+                m, n = next(iter(i.items()))
+                if n in dup:
+                    i[m] = dup[n]
                 j = tuple(sorted(i.items()))
                 if j not in past:
                     past.add(j)
-                    urlsn.append(i)
+                    urln.append(i)
             with open('output/url.json', 'w', encoding='utf-8') as wt:
-                dump(urlsn, wt, indent=4)
+                dump(urln, wt, indent=4)
 
     def __init__(self) -> None:
         self.n_lt = {}
@@ -418,7 +424,10 @@ class Imp:
         if not stems:
             lg.error('无 png 文件！', extra={'pos': self.POS})
             return
-        stems = tuple((i, (i[:i.rfind('_')] if '_' in {i[-3], i[-2]} else i)) for i in stems)
+        stems = tuple(
+            (i, (i[:i.rfind('_')] if '_' in {i[-3], i[-2]} else i))
+            for i in stems
+        )
         self.terlang(stems)
         if argp().demo:
             lg.info('演示模式，跳过 blotem 生成！', extra={'pos': self.POS})
