@@ -48,11 +48,6 @@ class Get:
             print()
             lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
-        _ = '''
-        if name.isdecimal():
-            lg.warning('非法 ID，已更名为 %s。', name[:-1] + 'r', extra={'pos': f'L{self.ln} - {name}'})
-            name = name[:-1] + 'r'
-        '''
         print(name, end=' - ', flush=True)
         return {
             'id': name,
@@ -147,7 +142,7 @@ class Get:
         self.n_lt[name] = (url, dt2['meaningful'])
         return dt1
 
-    def prune(self, dt: dict) -> dict:
+    def prune(self, dt: dict) -> tuple:
         dtn = {}
         url = []
         for i, j in dt.items():
@@ -254,7 +249,7 @@ class Get:
         self.out(dt, urls)
         lg.info('信息提取完成！', extra={'pos': self.POS})
 
-class Idt:
+class Identify:
     POS = 'IDT'
 
     def ext(self, url: str, msg: str) -> str:
@@ -348,7 +343,7 @@ class Idt:
                 dump(self.c_lt, wt, indent=4)
                 lg.info('缓存已输出！', extra={'pos': self.POS})
 
-class Imp:
+class Import:
     POS = 'IMP'
 
     def blotem(self, idn: str, templ: str) -> bool:
@@ -456,63 +451,80 @@ class Imp:
         lg.info('导入数据生成完成！', extra={'pos': self.POS})
 
     @staticmethod
-    def rename(re: bool=False) -> None:
-        pos = 'REVERT' if re else 'RENAME'
-        img_dir = Path('output/RP/textures/entity')
-        if Path('templates/playerheads.csv').is_file():
-            with open('templates/playerheads.csv', 'r', encoding='utf-8') as rd:
-                rd_op = reader(rd)
-                name = tuple(rd_op)
-                linum = len(str(len(name)))
-            lg.info('工作在 playerheads 模式下。', extra={'pos': pos})
-        elif Path('output/name.csv').is_file():
-            with open('output/name.csv', 'r', encoding='utf-8') as rd:
-                rd_op = reader(rd)
-                name = tuple(rd_op)
-                linum = len(str(len(name)))
-            lg.info('工作在 name 模式下。', extra={'pos': pos})
-        else:
-            lg.error('未找到名称文件，跳过重命名！', extra={'pos': pos})
-            return
-        if Path('output/info.json').is_file():
-            with open('output/info.json', 'r', encoding='utf-8') as rd:
-                info = rd.read()
-        else:
-            lg.warning('未找到信息文件，跳过该文件重命名！', extra={'pos': pos})
-            info = ''
-        for i, j in enumerate(name):
-            old = j[0]
-            new = j[1] if j[1] else old
-            msg = f'L{str(i+1).zfill(linum)} - {old}'
-            if old != new:
-                if re:
-                    msg = msg.replace(old, new)
-                    old, new = new, old
-                old_path = img_dir / f'{old}.png'
-                new_path = img_dir / f'{new}.png'
-                if new_path.is_file():
-                    lg.warning('新文件 %s 存在，已覆盖。', new, extra={'pos': msg})
-                if old_path.is_file():
-                    old_path.replace(new_path)
-                else:
-                    lg.warning('文件不存在，已跳过。', extra={'pos': msg})
-                info = info.replace(old, new)
-            else:
-                lg.warning('两名称相同，已跳过。', extra={'pos': msg})
-        if Path('output/info.json').is_file():
-            with open('output/info.json', 'w', encoding='utf-8') as wt:
-                wt.write(info)
-        lg.info('重命名完成！', extra={'pos': pos})
-
-    @staticmethod
     def wt_op(path: str, con: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, 'w', encoding='utf-8') as wt:
             wt.write(con)
 
     def __init__(self) -> None:
-        self.rename()
+        Rename()
         self.gen()
+
+class Rename:
+    def read_operator(self, path) -> dict:
+        with open(path, 'r', encoding='utf-8-sig') as f:
+            reading = reader(f)
+            names = {
+                ((i[1] or i[0]) if self.revert_mode else i[0]):
+                (i[0] if self.revert_mode else (i[1] or i[0]))
+                for i in reading
+            }
+        names.pop('Column1', None)
+        names.pop('Column2', None)
+        lg.info('工作在 %s 模式下。', path.stem, extra={'pos': self.pos})
+        return names
+
+    def read_names(self) -> dict:
+        playerheads_csv = Path('templates/playerheads.csv')
+        name_csv = Path('output/name.csv')
+        if playerheads_csv.is_file():
+            return self.read_operator(playerheads_csv)
+        if name_csv.is_file():
+            return self.read_operator(name_csv)
+        lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
+        return {}
+
+    def rename_operator(self, old_stem: str, new_stem: str, info_data: str) -> str:
+        old_path = self.img_dir / f'{old_stem}.png'
+        new_path = self.img_dir / f'{new_stem}.png'
+        lg.info('重命名为 %s。', new_stem, extra={'pos': old_stem})
+        if new_path.is_file():
+            lg.warning('新文件 %s 存在，已覆盖。', new_stem, extra={'pos': old_stem})
+        old_path.replace(new_path)
+        return info_data.replace(old_stem, new_stem)
+
+    def __init__(self, revert_mode: bool=False) -> None:
+        self.pos = 'REVERT' if revert_mode else 'RENAME'
+        self.revert_mode = revert_mode
+        self.img_dir = Path('output/RP/textures/entity')
+        info_json = Path('output/info.json')
+        if not (names := self.read_names()):
+            return
+        if info_json.is_file():
+            with open(info_json, 'r', encoding='utf-8') as f:
+                info_data = f.read()
+        else:
+            lg.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
+            info_data = ''
+        stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
+        for stem in stems:
+            if stem in names:
+                new_stem = names.pop(stem)
+                if new_stem != stem:
+                    info_data = self.rename_operator(stem, new_stem, info_data)
+            elif stem.isdecimal():
+                new_stem = stem[:-1] + 'r'
+                lg.warning('非法 ID，已更名为 %s。', new_stem, extra={'pos': stem})
+                info_data = self.rename_operator(stem, new_stem, info_data)
+            else:
+                lg.warning('未在名称文件中找到对应的条目。', extra={'pos': stem})
+        if names:
+            unused = '、'.join(names.keys())
+            lg.warning('未使用的条目：%s', unused, extra={'pos': self.pos})
+        if info_json.is_file():
+            with open(info_json, 'w', encoding='utf-8') as f:
+                f.write(info_data)
+        lg.info('重命名完成！', extra={'pos': self.pos})
 
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
@@ -553,13 +565,13 @@ if __name__ == '__main__':
             Get()
             print()
         if 'idt' in argp().mode:
-            Idt()
+            Identify()
             print()
         if 'imp' in argp().mode:
-            Imp()
+            Import()
             print()
         if argp().revert:
-            Imp.rename(True)
+            Rename(True)
             print()
     except Exception:
         lg.exception('未知错误。', extra={'pos': __name__})
