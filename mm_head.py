@@ -62,7 +62,7 @@ class Get:
         img_path = self.img_dir / f'{name}.png'
         if argp().nodl or not url or img_path.is_file():
             print('跳过下载...', end='', flush=True)
-            if self.rect(img_path):
+            if url and self.rect(img_path):
                 print('成功！', flush=True)
             else:
                 print()
@@ -139,7 +139,8 @@ class Get:
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
             self.dls(url, name)
-        self.n_lt[name] = (url, dt2['meaningful'])
+        if url:
+            self.n_lt[name] = (url, dt2['meaningful'])
         return dt1
 
     def prune(self, dt: dict) -> tuple:
