@@ -24,7 +24,7 @@ class Get:
 
     def ext(self, data: str) -> dict:
         fac, rot, url = None, None, None
-        trans = str.maketrans(' -', '__', '()')
+        trans = str.maketrans(' -', '__', '().#')
         mname = True
         ars = 'armor_stand' in data
         loc = search(r' ([\d\-. ]+) ', data).group(1)
@@ -321,7 +321,7 @@ class Identify:
             j = self.ext(n, msg)
             self.c_lt[m] = j
         if j:
-            j = j.translate(str.maketrans(' -', '__', '()')).lower() + '_' + n[4:6]
+            j = j.translate(str.maketrans(' -', '__', '().#')).lower() + '_' + n[4:6]
             j = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', j)
             print(j, flush=True)
             if l := self.n_lt.get(j):
