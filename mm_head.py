@@ -26,9 +26,21 @@ class Get:
         fac, rot, url = None, None, None
         trans = str.maketrans(' -', '__', '()')
         mname = True
+        ars = 'armor_stand' in data
         loc = search(r' ([\d\-. ]+) ', data).group(1)
+        if '.' in loc:
+            loc = [int(float(i)) for i in loc.split(' ')]
+            loc[1] += 1
+            loc = ' '.join(map(str, loc))
         if 'rotation' in data:
             rot = int(search(r'rotation=(\d+)', data).group(1))
+        elif 'Rotation' in data:
+            rot_map = [180]
+            rot_map.extend(int(-157.5 + i * 22.5) for i in range(15))
+            rot_ori = search(r'Rotation: ?\[([\d\-.]+)f', data).group(1)
+            rot_ori = '180.0' if rot_ori == '-180.0' else rot_ori
+            rot_closest = min(rot_map, key=lambda x: abs(int(float(rot_ori))-x))
+            rot = rot_map.index(rot_closest)
         elif 'facing' in data:
             fac = search(r'facing=([^,\]]+)', data).group(1)
         if 'value:' in data:
@@ -36,8 +48,10 @@ class Get:
             bsr += '=' * (-len(bsr) % 4)
             bsd = b64d(bsr).decode()
             url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
-            name = search(r'(?:name|text): ?"([^"]*)"', data).group(1) \
-                .translate(trans).lower()
+            name = search(r'(?:name|text): ?"([^"]*)"', data)
+            if 'minecraft:custom_name' in data and 'text:' not in data:
+                name = search(r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data)
+            name = name.group(1).translate(trans).lower()
             if not name or name == 'textures':
                 name = url[url.rfind('/')+1:url.rfind('/')+7]
                 mname = False
@@ -55,7 +69,8 @@ class Get:
             'rotation': rot,
             'facing': fac,
             'url': url,
-            'meaningful': mname
+            'meaningful': mname,
+            'armor_stand': ars
         }
 
     def dls(self, url: str, name: str) -> bool:
@@ -352,9 +367,11 @@ class Import:
             return False
         with open(templ, 'r', encoding='utf-8') as rd:
             tem = rd.read()
-        uni = tem.replace('yzbwdlt', idn)
         flag = templ[templ.rfind('.', 0, -7)+1:templ.rfind('.')]
         wt_path = f'output/BP/{flag}s/{idn}.{flag}.json'
+        uni = tem.replace('yzbwdlt', idn)
+        if flag == 'block' and idn in {'swamp_monster', 'diamivore_3d'}:
+            uni = uni.replace('popped', 'no_reaction')
         self.wt_op(wt_path, uni)
         return True
 
@@ -467,7 +484,7 @@ class Rename:
             reading = reader(f)
             names = {
                 ((i[1] or i[0]) if self.revert_mode else i[0]):
-                (i[0] if self.revert_mode else (i[1] or i[0]))
+                ((i[0] if self.revert_mode else (i[1] or i[0])), path.stem)
                 for i in reading
             }
         names.pop('Column1', None)
@@ -478,12 +495,12 @@ class Rename:
     def read_names(self) -> dict:
         playerheads_csv = Path('templates/playerheads.csv')
         name_csv = Path('output/name.csv')
-        if playerheads_csv.is_file():
-            return self.read_operator(playerheads_csv)
+        name_list = {}
         if name_csv.is_file():
-            return self.read_operator(name_csv)
-        lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
-        return {}
+            name_list.update(self.read_operator(name_csv))
+        if playerheads_csv.is_file():
+            name_list.update(self.read_operator(playerheads_csv))
+        return name_list
 
     def rename_operator(self, old_stem: str, new_stem: str, info_data: str) -> str:
         old_path = self.img_dir / f'{old_stem}.png'
@@ -500,6 +517,7 @@ class Rename:
         self.img_dir = Path('output/RP/textures/entity')
         info_json = Path('output/info.json')
         if not (names := self.read_names()):
+            lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
             return
         if info_json.is_file():
             with open(info_json, 'r', encoding='utf-8') as f:
@@ -510,9 +528,11 @@ class Rename:
         stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
         for stem in stems:
             if stem in names:
-                new_stem = names.pop(stem)
+                new_stem, work_mode = names.pop(stem)
                 if new_stem != stem:
                     info_data = self.rename_operator(stem, new_stem, info_data)
+                if work_mode == 'name' and Path('templates/playerheads.csv').is_file():
+                    lg.warning('未在 playerheads 中找到对应的条目，新名称 %s。', new_stem, extra={'pos': stem})
             elif stem.isdecimal():
                 new_stem = stem[:-1] + 'r'
                 lg.warning('非法 ID，已更名为 %s。', new_stem, extra={'pos': stem})
@@ -521,7 +541,7 @@ class Rename:
                 lg.warning('未在名称文件中找到对应的条目。', extra={'pos': stem})
         if names:
             unused = '、'.join(names.keys())
-            lg.warning('未使用的条目：%s', unused, extra={'pos': self.pos})
+            lg.warning('未使用的条目：%s。', unused, extra={'pos': self.pos})
         if info_json.is_file():
             with open(info_json, 'w', encoding='utf-8') as f:
                 f.write(info_data)
