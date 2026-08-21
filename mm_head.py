@@ -172,6 +172,8 @@ class Get:
             for k in j:
                 k.pop('url')
                 k.pop('meaningful')
+                if not argp().armorstand or True:
+                    k.pop('armor_stand')
                 l = [m for m, n in k.items() if not n and n != 0]
                 for m in l:
                     k.pop(m)
@@ -409,7 +411,7 @@ class Import:
             '    "texture_data": {\n'
             f'{ter}\n\n'
             '        "player_head_yzbwdlt": { "textures": "textures/entity/yzbwdlt" },\n'
-            '        "player_head_violetmiaw": { "textures": "textures/entity/violetmiaw" },\n'
+            '        "player_head_chthollies": { "textures": "textures/entity/chthollies" },\n'
             '        "player_head_jhy2189": { "textures": "textures/entity/jhy2189" },\n'
             '        "player_head_freamoluwu": { "textures": "textures/entity/freamoluwu" \n}'
             '    }'
@@ -421,7 +423,7 @@ class Import:
             'tile.player_head:yzbwdlt.name=YZBWDLT 的头\n'
             'tile.player_head:freamoluwu.name=Freamoluwu 的头\n'
             'tile.player_head:jhy2189.name=JHY2189 的头\n'
-            'tile.player_head:violetmiaw.name=VioletMiaw 的头\n'
+            'tile.player_head:chthollies.name=Chthollies 的头\n'
         )
         enl_full = (
             '## ===== Blocks =====\n'
@@ -429,7 +431,7 @@ class Import:
             "tile.player_head:yzbwdlt.name=YZBWDLT's Head\n"
             "tile.player_head:freamoluwu.name=Freamoluwu's Head\n"
             "tile.player_head:jhy2189.name=JHY2189's Head\n"
-            "tile.player_head:violetmiaw.name=VioletMiaw's Head\n"
+            "tile.player_head:chthollies.name=Chthollies's Head\n"
         )
         self.wt_op('output/RP/textures/terrain_texture.json', ter_full)
         self.wt_op('output/RP/texts/en_US.lang', enl_full)
