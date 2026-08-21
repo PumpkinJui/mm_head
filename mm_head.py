@@ -567,9 +567,9 @@ def diff() -> None:
     if not {source_suffix, dest_suffix}.issubset({'.json', '.csv'}):
         lg.error('后缀名不支持！', extra={'pos': pos})
         return
-    with open(file_source, 'r', encoding='utf-8') as f:
+    with open(file_source, 'r', encoding='utf-8-sig') as f:
         decoded_source = load(f) if source_suffix == '.json' else tuple(reader(f))
-    with open(file_dest, 'r', encoding='utf-8') as f:
+    with open(file_dest, 'r', encoding='utf-8-sig') as f:
         decoded_dest = load(f) if dest_suffix == '.json' else tuple(reader(f))
     excluded = r"\['armor_stand'\]" if source_suffix == '.json' \
         else r"root\[\d+\]\[2\]"
