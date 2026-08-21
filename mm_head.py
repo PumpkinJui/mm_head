@@ -15,6 +15,7 @@ from pathlib import Path
 from re import search, sub
 from time import sleep
 
+from deepdiff import DeepDiff
 from PIL import Image
 from requests import exceptions, get
 
@@ -549,6 +550,38 @@ class Rename:
                 f.write(info_data)
         lg.info('重命名完成！', extra={'pos': self.pos})
 
+def diff() -> None:
+    pos = 'DIFF'
+    file_source, file_dest = map(Path, argp().compare)
+    if not file_source.is_file():
+        lg.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
+        return
+    if not file_dest.is_file():
+        lg.error('%s 文件不存在！', str(file_dest), extra={'pos': pos})
+        return
+    source_suffix = file_source.suffix.lower()
+    dest_suffix = file_dest.suffix.lower()
+    if source_suffix != dest_suffix:
+        lg.error('后缀名不一致！', extra={'pos': pos})
+        return
+    if not {source_suffix, dest_suffix}.issubset({'.json', '.csv'}):
+        lg.error('后缀名不支持！', extra={'pos': pos})
+        return
+    with open(file_source, 'r', encoding='utf-8') as f:
+        decoded_source = load(f) if source_suffix == '.json' else tuple(reader(f))
+    with open(file_dest, 'r', encoding='utf-8') as f:
+        decoded_dest = load(f) if dest_suffix == '.json' else tuple(reader(f))
+    excluded = r"\['armor_stand'\]" if source_suffix == '.json' \
+        else r"root\[\d+\]\[2\]"
+    result = DeepDiff(
+        decoded_source,
+        decoded_dest,
+        ignore_order = True,
+        exclude_regex_paths = excluded,
+        verbose_level = 2
+    )
+    print(result.pretty())
+
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
     par.add_argument(
@@ -557,16 +590,21 @@ def argp():
         default=['get'],
         help='运行模式，get、idt、imp、all，可多选，默认 get；all = get idt imp'
     )
+    par.add_argument(
+        '-c', '--compare',
+        nargs=2,
+        help='比较给出的两个文件，目前支持 JSON 和 CSV 格式，忽略其他操作'
+    )
     par.add_argument('-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作')
     par.add_argument('-d', '--demo', action='store_true', help='演示模式，不输出 blocks 和 items')
     par.add_argument('-l', '--nodl', action='store_true', help='跳过下载')
     par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
-    par.add_argument('-c', '--nocache', action='store_true', help='忽略缓存')
+    par.add_argument('-e', '--nocache', action='store_true', help='忽略缓存')
     par.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
     args = par.parse_args()
     if 'all' in args.mode:
         args.mode = ['get', 'idt', 'imp']
-    if args.revert:
+    if args.revert or args.compare:
         args.mode = []
     return args
 
@@ -593,8 +631,11 @@ if __name__ == '__main__':
         if 'imp' in argp().mode:
             Import()
             print()
-        if argp().revert:
+        if argp().revert and not argp().compare:
             Rename(True)
+            print()
+        if argp().compare and not argp().revert:
+            diff()
             print()
     except Exception:
         lg.exception('未知错误。', extra={'pos': __name__})
