@@ -189,7 +189,7 @@ class Get:
             if not j.strip():
                 continue
             if not argp().armorstand and 'armor_stand' in j:
-                lg.warning('盔甲架输出已关闭。', extra={'pos': f'L{self.ln}'})
+                lg.info('盔甲架输出已关闭。', extra={'pos': f'L{self.ln}'})
                 continue
             try:
                 print(f'L{self.ln}', end=' - ', flush=True)
@@ -512,7 +512,7 @@ class Rename:
         if new_path.is_file():
             lg.warning('新文件 %s 存在，已覆盖。', new_stem, extra={'pos': old_stem})
         old_path.replace(new_path)
-        return info_data.replace(old_stem, new_stem)
+        return info_data.replace(f'"{old_stem}"', f'"{new_stem}"')
 
     def __init__(self, revert_mode: bool=False) -> None:
         self.pos = 'REVERT' if revert_mode else 'RENAME'
