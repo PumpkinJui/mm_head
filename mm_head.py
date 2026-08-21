@@ -324,8 +324,8 @@ class Identify:
             j = self.ext(n, msg)
             self.c_lt[m] = j
         if j:
-            j = j.translate(str.maketrans(' -', '__', '().#')).lower() + '_' + n[4:6]
             j = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', j)
+            j = j.translate(str.maketrans(' -', '__', '().#')).lower() + '_' + n[4:6]
             print(j, flush=True)
             if l := self.n_lt.get(j):
                 self.dup[j] = self.dup.get(j, 0) + 1
