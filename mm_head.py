@@ -78,7 +78,7 @@ class Get:
         img_path = self.img_dir / f'{name}.png'
         if argp().nodl or not url or img_path.is_file():
             print('跳过下载...', end='', flush=True)
-            if url and self.rect(img_path):
+            if url and img_path.is_file() and self.rect(img_path):
                 print('成功！', flush=True)
             else:
                 print()
@@ -173,7 +173,7 @@ class Get:
             for k in j:
                 k.pop('url')
                 k.pop('meaningful')
-                if not argp().armorstand or True:
+                if not argp().armorstand:
                     k.pop('armor_stand')
                 l = [m for m, n in k.items() if not n and n != 0]
                 for m in l:
@@ -214,7 +214,7 @@ class Get:
                 dup[name] = nurl
                 data = data.replace(f'"{name}"',f'"{nurl}"')
                 lg.warning(
-                    'URL 对应多重名称，已将新的统一为 %s。',
+                    'URL 对应多重名称，已统一为 %s。',
                     nurl,
                     extra={'pos': f'{name}'}
                 )
@@ -453,7 +453,7 @@ class Import:
         )
         self.terlang(stems)
         if argp().nobp:
-            lg.info('演示模式，跳过 blotem 生成！', extra={'pos': self.POS})
+            lg.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
         else:
             for i, _ in stems:
                 if not self.blotem(i, block_tem) and block_info:
