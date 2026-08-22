@@ -452,23 +452,24 @@ class Import:
             for i in stems
         )
         self.terlang(stems)
-        if argp().demo:
+        if argp().nobp:
             lg.info('演示模式，跳过 blotem 生成！', extra={'pos': self.POS})
-        for i, _ in stems:
-            if not self.blotem(i, block_tem) and block_info:
-                lg.error(
-                    '未找到模板 %s，跳过 block 生成！',
-                    block_tem,
-                    extra={'pos': self.POS}
-                )
-                block_info = False
-            if not self.blotem(i, item_tem) and item_info:
-                lg.error(
-                    '未找到模板 %s，跳过 item 生成！',
-                    item_tem,
-                    extra={'pos': self.POS}
-                )
-                item_info = False
+        else:
+            for i, _ in stems:
+                if not self.blotem(i, block_tem) and block_info:
+                    lg.error(
+                        '未找到模板 %s，跳过 block 生成！',
+                        block_tem,
+                        extra={'pos': self.POS}
+                    )
+                    block_info = False
+                if not self.blotem(i, item_tem) and item_info:
+                    lg.error(
+                        '未找到模板 %s，跳过 item 生成！',
+                        item_tem,
+                        extra={'pos': self.POS}
+                    )
+                    item_info = False
         lg.info('导入数据生成完成！', extra={'pos': self.POS})
 
     @staticmethod
@@ -552,7 +553,7 @@ class Rename:
 
 def diff() -> None:
     pos = 'DIFF'
-    file_source, file_dest = map(Path, argp().compare)
+    file_source, file_dest = map(Path, argp().diff)
     if not file_source.is_file():
         lg.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
         return
@@ -591,20 +592,20 @@ def argp():
         help='运行模式，get、idt、imp、all，可多选，默认 get；all = get idt imp'
     )
     par.add_argument(
-        '-c', '--compare',
+        '-d', '--diff',
         nargs=2,
         help='比较给出的两个文件，目前支持 JSON 和 CSV 格式，忽略其他操作'
     )
     par.add_argument('-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作')
-    par.add_argument('-d', '--demo', action='store_true', help='演示模式，不输出 blocks 和 items')
+    par.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
     par.add_argument('-l', '--nodl', action='store_true', help='跳过下载')
     par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
     par.add_argument('-e', '--nocache', action='store_true', help='忽略缓存')
-    par.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
+    par.add_argument('-b', '--nobp', action='store_true', help='跳过 BP 输出，即 blocks 和 items')
     args = par.parse_args()
     if 'all' in args.mode:
         args.mode = ['get', 'idt', 'imp']
-    if args.revert or args.compare:
+    if args.revert or args.diff:
         args.mode = []
     return args
 
@@ -631,10 +632,10 @@ if __name__ == '__main__':
         if 'imp' in argp().mode:
             Import()
             print()
-        if argp().revert and not argp().compare:
+        if argp().revert and not argp().diff:
             Rename(True)
             print()
-        if argp().compare and not argp().revert:
+        if argp().diff and not argp().revert:
             diff()
             print()
     except Exception:
