@@ -23,10 +23,30 @@ from requests import exceptions, get
 class Get:
     POS = 'GET'
 
-    def ext(self, data: str) -> dict:
-        fac, rot, url = None, None, None
+    def url_name(self, data: str) -> tuple:
+        name, url, mname = None, None, True
         trans = str.maketrans(' -', '__', '().#')
-        mname = True
+        if 'value:' in data:
+            bsr = search(r'value: ?"([^\"]+)"', data).group(1)
+            bsr += '=' * (-len(bsr) % 4)
+            bsd = b64d(bsr).decode()
+            url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
+            name = search(r'(?:name|text): ?"([^"]*)"', data)
+            if 'minecraft:custom_name' in data and 'text:' not in data:
+                name = search(r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data)
+            name = name.group(1).translate(trans).lower()
+            if not name or name == 'textures':
+                name = url[url.rfind('/')+1:url.rfind('/')+7]
+                mname = False
+        elif 'head:' in data:
+            name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1) \
+                .translate(trans).lower()
+        else:
+            mname = False
+        return name, url, mname
+
+    def ext(self, data: str) -> dict:
+        fac, rot = None, None
         ars = 'armor_stand' in data
         loc = search(r' ([\d\-. ]+) ', data).group(1)
         if '.' in loc:
@@ -44,22 +64,8 @@ class Get:
             rot = rot_map.index(rot_closest)
         elif 'facing' in data:
             fac = search(r'facing=([^,\]]+)', data).group(1)
-        if 'value:' in data:
-            bsr = search(r'value: ?"([^\"]+)"', data).group(1)
-            bsr += '=' * (-len(bsr) % 4)
-            bsd = b64d(bsr).decode()
-            url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
-            name = search(r'(?:name|text): ?"([^"]*)"', data)
-            if 'minecraft:custom_name' in data and 'text:' not in data:
-                name = search(r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data)
-            name = name.group(1).translate(trans).lower()
-            if not name or name == 'textures':
-                name = url[url.rfind('/')+1:url.rfind('/')+7]
-                mname = False
-        elif 'head:' in data:
-            name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1) \
-                .translate(trans).lower()
-        else:
+        name, url, mname = self.url_name(data)
+        if not (name or url or mname):
             print()
             lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
