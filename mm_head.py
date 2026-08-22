@@ -499,7 +499,6 @@ class Rename:
             }
         names.pop('Column1', None)
         names.pop('Column2', None)
-        lg.info('工作在 %s 模式下。', path.stem, extra={'pos': self.pos})
         return names
 
     def read_names(self) -> dict:
@@ -508,8 +507,10 @@ class Rename:
         name_list = {}
         if name_csv.is_file():
             name_list.update(self.read_operator(name_csv))
+            lg.info('工作在 name 模式下。', extra={'pos': self.pos})
         if playerheads_csv.is_file():
             name_list.update(self.read_operator(playerheads_csv))
+            lg.info('工作在 playerheads 模式下。', extra={'pos': self.pos})
         return name_list
 
     def rename_operator(self, old_stem: str, new_stem: str, info_data: str) -> str:
@@ -526,6 +527,7 @@ class Rename:
         self.revert_mode = revert_mode
         self.img_dir = Path('output/RP/textures/entity')
         info_json = Path('output/info.json')
+        playerheads_csv = Path('templates/playerheads.csv')
         if not (names := self.read_names()):
             lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
             return
@@ -536,12 +538,18 @@ class Rename:
             lg.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
             info_data = ''
         stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
+        all_new_stems = set(
+            new_stem
+            for new_stem, _
+            in self.read_operator(playerheads_csv).values()
+        ) if playerheads_csv.is_file() else set()
         for stem in stems:
             if stem in names:
                 new_stem, work_mode = names.pop(stem)
                 if new_stem != stem:
                     info_data = self.rename_operator(stem, new_stem, info_data)
-                if work_mode == 'name' and Path('templates/playerheads.csv').is_file():
+                if work_mode == 'name' and playerheads_csv.is_file() \
+                    and new_stem not in all_new_stems:
                     lg.warning('未在 playerheads 中找到对应的条目，新名称 %s。', new_stem, extra={'pos': stem})
             elif stem.isdecimal():
                 new_stem = stem[:-1] + 'r'
