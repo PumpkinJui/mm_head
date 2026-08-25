@@ -189,9 +189,8 @@ class Get:
 
     def pro(self, stem: str, data: list) -> dict:
         dt = {}
-        linum = len(str(len(data)))
         for i, j in enumerate(data):
-            self.ln = str(i + 1).zfill(linum)
+            self.ln = str(i + 1).zfill(3)
             if not j.strip():
                 continue
             if not argp().armorstand and 'armor_stand' in j:
@@ -356,9 +355,8 @@ class Identify:
                 with open(path, 'r', encoding='utf-8') as rd:
                     data = load(rd)
                 lg.info('%s - L%s', path, len(data), extra={'pos': self.POS})
-                linum = len(str(len(data)))
                 for i, j in enumerate(data):
-                    self.pro(j, str(i+1).zfill(linum))
+                    self.pro(j, str(i+1).zfill(3))
                 self.dout()
             else:
                 lg.error('%s 不存在！', path, extra={'pos': self.POS})
