@@ -39,10 +39,12 @@ class Get:
                 name = url[url.rfind('/')+1:url.rfind('/')+7]
                 mname = False
         elif 'head:' in data:
-            name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1) \
-                .translate(trans).lower()
+            name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1)
+            name = name.translate(trans).lower()
         else:
             mname = False
+        if mname:
+            name += f'_{url[url.rfind("/")+1:url.rfind("/")+3]}'
         return name, url, mname
 
     def ext(self, data: str) -> dict:
