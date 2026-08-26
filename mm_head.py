@@ -225,7 +225,10 @@ class Get:
                     nurl,
                     extra={'pos': f'{name}'}
                 )
-                (self.img_dir / f'{name}.png').replace(self.img_dir / f'{nurl}.png')
+                if (old := self.img_dir / f'{name}.png').is_file():
+                    old.replace(self.img_dir / f'{nurl}.png')
+                else:
+                    lg.warning('该文件不存在，已跳过。', extra={'pos': f'{name}'})
         with open('output/info.json', 'w', encoding='utf-8') as wt:
             wt.write(data)
         if not argp().nourl:
@@ -519,7 +522,10 @@ class Rename:
         lg.info('重命名为 %s。', new_stem, extra={'pos': old_stem})
         if new_path.is_file():
             lg.warning('新文件 %s 存在，已覆盖。', new_stem, extra={'pos': old_stem})
-        old_path.replace(new_path)
+        if old_path.is_file:
+            old_path.replace(new_path)
+        else:
+            lg.warning('该文件不存在，已跳过。', extra={'pos': old_stem})
         return info_data.replace(f'"{old_stem}"', f'"{new_stem}"')
 
     def __init__(self, revert_mode: bool=False) -> None:
