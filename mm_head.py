@@ -332,7 +332,8 @@ class Identify:
             print('（缓存）', end='', flush=True)
         else:
             j = self.ext(n, msg)
-            self.c_lt[m] = j
+            if j:
+                self.c_lt[m] = j
         if j:
             j = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', j)
             j = j.translate(str.maketrans(' -', '__', '().#')).lower() + '_' + n[4:6]
