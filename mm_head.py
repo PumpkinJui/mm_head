@@ -36,7 +36,7 @@ class Get:
                 name = search(r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data)
             name = name.group(1).translate(trans).lower()
             if not name or name == 'textures':
-                name = url[url.rfind('/')+1:url.rfind('/')+7]
+                name = url[url.rfind('/') + 1 : url.rfind('/') + 7]
                 mname = False
         elif 'head:' in data:
             name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1)
@@ -44,7 +44,7 @@ class Get:
         else:
             mname = False
         if mname and name and url:
-            name += f'_{url[url.rfind("/")+1:url.rfind("/")+3]}'
+            name += f'_{url[url.rfind("/") + 1 : url.rfind("/") + 3]}'
         return name, url, mname
 
     def ext(self, data: str) -> dict:
@@ -62,7 +62,7 @@ class Get:
             rot_map.extend(int(-157.5 + i * 22.5) for i in range(15))
             rot_ori = search(r'Rotation: ?\[([\d\-.]+)f', data).group(1)
             rot_ori = '180.0' if rot_ori == '-180.0' else rot_ori
-            rot_closest = min(rot_map, key=lambda x: abs(int(float(rot_ori))-x))
+            rot_closest = min(rot_map, key=lambda x: abs(int(float(rot_ori)) - x))
             rot = rot_map.index(rot_closest)
         elif 'facing' in data:
             fac = search(r'facing=([^,\]]+)', data).group(1)
@@ -79,7 +79,7 @@ class Get:
             'facing': fac,
             'url': url,
             'meaningful': mname,
-            'armor_stand': ars
+            'armor_stand': ars,
         }
 
     def dls(self, url: str, name: str) -> bool:
@@ -98,12 +98,16 @@ class Get:
                 img.raise_for_status()
                 break
             except exceptions.ConnectionError:
-                print(f'连接错误（{i+1}/3）...', end='', flush=True)
+                print(f'连接错误（{i + 1}/3）...', end='', flush=True)
                 sleep(1)
             except exceptions.HTTPError as e:
-                print(f'状态码 {e.response.status_code}（{i+1}/3）...', end='', flush=True)
+                print(
+                    f'状态码 {e.response.status_code}（{i + 1}/3）...',
+                    end='',
+                    flush=True,
+                )
             except exceptions.Timeout:
-                print(f'超时（{i+1}/3）...', end='', flush=True)
+                print(f'超时（{i + 1}/3）...', end='', flush=True)
                 sleep(1)
         else:
             print()
@@ -147,8 +151,9 @@ class Get:
             else:
                 lg.warning(
                     '位置 %s 已存在头颅 %s。',
-                    dt2["location"], idn,
-                    extra={'pos': f'L{self.ln} - {name}'}
+                    dt2['location'],
+                    idn,
+                    extra={'pos': f'L{self.ln} - {name}'},
                 )
         else:
             dt1[stem] = [dt2]
@@ -157,12 +162,12 @@ class Get:
             i = 0
             while self.n_lt.get(name, [url])[0] != url:
                 i += 1
-                name = f'{name}_{i}' if i == 1 else f'{name[:name.rfind("_")]}_{i}'
+                name = f'{name}_{i}' if i == 1 else f'{name[: name.rfind("_")]}_{i}'
             dt2['id'] = name
             lg.warning(
                 '对应多重 URL，已将新的更名为 %s。',
                 name,
-                extra={'pos': f'L{self.ln} - {old}'}
+                extra={'pos': f'L{self.ln} - {old}'},
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
             self.dls(url, name)
@@ -177,9 +182,15 @@ class Get:
             dtn[i] = []
             if not argp().nourl:
                 url = [
-                    {f'url:{k["url"].replace(
-                        "https://textures.minecraft.net/texture/", ""
-                    )}': k['id']} for k in j if k['url']
+                    {
+                        f'url:{
+                            k["url"].replace(
+                                "https://textures.minecraft.net/texture/", ""
+                            )
+                        }': k['id']
+                    }
+                    for k in j
+                    if k['url']
                 ]
             for k in j:
                 k.pop('url')
@@ -222,11 +233,9 @@ class Get:
         for name, url, mname in u_lt:
             if (nurl := names.get(url)) and name != nurl:
                 dup[name] = nurl
-                data = data.replace(f'"{name}"',f'"{nurl}"')
+                data = data.replace(f'"{name}"', f'"{nurl}"')
                 lg.warning(
-                    'URL 对应多重名称，已统一为 %s。',
-                    nurl,
-                    extra={'pos': f'{name}'}
+                    'URL 对应多重名称，已统一为 %s。', nurl, extra={'pos': f'{name}'}
                 )
                 if (old := self.img_dir / f'{name}.png').is_file():
                     old.replace(self.img_dir / f'{nurl}.png')
@@ -264,22 +273,22 @@ class Get:
             stem = f.stem
             with open(f, 'r', encoding='utf-8') as rd:
                 data = rd.read().splitlines()
-            lg.warning('%s - L%s',
-                stem, len(data),
-                extra={'pos': self.POS}
-            )
+            lg.warning('%s - L%s', stem, len(data), extra={'pos': self.POS})
             dtn, url = self.prune(self.pro(stem, data))
             dt |= dtn
             if url:
                 urls.extend(url)
         if not f:
-            lg.warning('未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS})
+            lg.warning(
+                '未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS}
+            )
             data = [input('输入待处理项：')]
             dt, url = self.prune(self.pro('info', data))
             if url:
                 urls.extend(url)
         self.out(dt, urls)
         lg.info('信息提取完成！', extra={'pos': self.POS})
+
 
 class Identify:
     POS = 'IDT'
@@ -291,20 +300,20 @@ class Identify:
                 res = get(
                     'https://minecraft-heads.com/custom-heads/search',
                     params={'searchterm': url},
-                    timeout=(6.05, 10)
+                    timeout=(6.05, 10),
                 )
                 res.raise_for_status()
                 break
             except exceptions.ConnectionError:
-                print(f'连接错误（{i+1}/3）...', end='', flush=True)
+                print(f'连接错误（{i + 1}/3）...', end='', flush=True)
                 sleep(1)
             except exceptions.HTTPError as e:
                 data = e.response
                 if 'Just a moment' in data.text:
                     raise PermissionError from e
-                print(f'状态码 {data.status_code}（{i+1}/3）...', end='', flush=True)
+                print(f'状态码 {data.status_code}（{i + 1}/3）...', end='', flush=True)
             except exceptions.Timeout:
-                print(f'超时（{i+1}/3）...', end='', flush=True)
+                print(f'超时（{i + 1}/3）...', end='', flush=True)
                 sleep(1)
         else:
             print()
@@ -313,7 +322,7 @@ class Identify:
         data = res.text
         if 'No Heads available' in data:
             return ''
-        con = data[data.find('descending'):data.find('Search Tips')]
+        con = data[data.find('descending') : data.find('Search Tips')]
         return search(r'a href=.+title="([^"]+)"', con).group(1)
 
     def cache(self) -> dict:
@@ -332,7 +341,7 @@ class Identify:
     def stripping(self, name: str, identifier: str) -> str:
         name = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', name)
         name = name.translate(str.maketrans(' -', '__', '().#')).lower()
-        name += ('_' + identifier)
+        name += '_' + identifier
         return name
 
     def dout(self) -> None:
@@ -359,7 +368,9 @@ class Identify:
                 self.dup[j] = self.dup.get(j, 0) + 1
                 k = j
                 j += f'_{self.dup[j]}'
-                lg.warning('与 %s 拥有共同的新名称，已更名为 %s。', l, j, extra={'pos': msg})
+                lg.warning(
+                    '与 %s 拥有共同的新名称，已更名为 %s。', l, j, extra={'pos': msg}
+                )
             self.n_lt[j] = m
         else:
             print(m, flush=True)
@@ -379,7 +390,7 @@ class Identify:
                     data = load(rd)
                 lg.info('%s - L%s', path, len(data), extra={'pos': self.POS})
                 for i, j in enumerate(data):
-                    self.pro(j, str(i+1).zfill(3))
+                    self.pro(j, str(i + 1).zfill(3))
                 self.dout()
             else:
                 lg.error('%s 不存在！', path, extra={'pos': self.POS})
@@ -389,8 +400,7 @@ class Identify:
             lg.error('已触发 Turnstile！', extra={'pos': self.POS})
             if self.c_lt:
                 with open(
-                    'output/name.csv', 'w',
-                    encoding='utf-8-sig', newline=''
+                    'output/name.csv', 'w', encoding='utf-8-sig', newline=''
                 ) as wt:
                     lt = [(i, self.stripping(j, i[0:2])) for i, j in self.c_lt.items()]
                     wt_op = writer(wt)
@@ -400,6 +410,7 @@ class Identify:
                 dump(self.c_lt, wt, indent=4)
                 lg.info('缓存已输出！', extra={'pos': self.POS})
 
+
 class Import:
     POS = 'IMP'
 
@@ -408,13 +419,13 @@ class Import:
             return False
         with open(templ, 'r', encoding='utf-8') as rd:
             tem = rd.read()
-        flag = templ[templ.rfind('.', 0, -7)+1:templ.rfind('.')]
+        flag = templ[templ.rfind('.', 0, -7) + 1 : templ.rfind('.')]
         wt_path = f'output/BP/{flag}s/{idn}.{flag}.json'
         uni = tem.replace('yzbwdlt', idn)
         if flag == 'block' and idn in {
             'swamp_monster',
             'swamp_monster_3d',
-            'diamivore_3d'
+            'diamivore_3d',
         }:
             uni = uni.replace('popped', 'no_reaction')
         self.wt_op(wt_path, uni)
@@ -433,20 +444,22 @@ class Import:
             f'        "player_head_{i[0]}": {{ "textures": "textures/entity/{i[0]}" }},'
             for i in idn_lt
         )
-        zhl = '\n'.join(
-            f'tile.player_head:{i[0]}.name={i[1].title()} 的头'
-            for i in idn_lt
-        ) if fb else '\n'.join(
-            f'tile.player_head:{i[0]}.name={
-                data.get(i[0], i[0])[:data.get(i[0], i[0]).rfind('_')].title()
-                if '_' in {data.get(i[0], i[0])[-3], data.get(i[0], i[0])[-2]}
-                else data.get(i[0], i[1]).title()
-            } 的头'
-            for i in idn_lt
+        zhl = (
+            '\n'.join(
+                f'tile.player_head:{i[0]}.name={i[1].title()} 的头' for i in idn_lt
+            )
+            if fb
+            else '\n'.join(
+                f'tile.player_head:{i[0]}.name={
+                    data.get(i[0], i[0])[: data.get(i[0], i[0]).rfind("_")].title()
+                    if "_" in {data.get(i[0], i[0])[-3], data.get(i[0], i[0])[-2]}
+                    else data.get(i[0], i[1]).title()
+                } 的头'
+                for i in idn_lt
+            )
         )
         enl = '\n'.join(
-            f"tile.player_head:{i[0]}.name={i[1].title()}'s Head"
-            for i in idn_lt
+            f"tile.player_head:{i[0]}.name={i[1].title()}'s Head" for i in idn_lt
         )
         ter_full = (
             '{\n'
@@ -490,8 +503,7 @@ class Import:
             lg.error('无 png 文件！', extra={'pos': self.POS})
             return
         stems = tuple(
-            (i, (i[:i.rfind('_')] if '_' in {i[-3], i[-2]} else i))
-            for i in stems
+            (i, (i[: i.rfind('_')] if '_' in {i[-3], i[-2]} else i)) for i in stems
         )
         self.terlang(stems)
         if argp().nobp:
@@ -502,14 +514,14 @@ class Import:
                     lg.error(
                         '未找到模板 %s，跳过 block 生成！',
                         block_tem,
-                        extra={'pos': self.POS}
+                        extra={'pos': self.POS},
                     )
                     block_info = False
                 if not self.blotem(i, item_tem) and item_info:
                     lg.error(
                         '未找到模板 %s，跳过 item 生成！',
                         item_tem,
-                        extra={'pos': self.POS}
+                        extra={'pos': self.POS},
                     )
                     item_info = False
         lg.info('导入数据生成完成！', extra={'pos': self.POS})
@@ -524,13 +536,16 @@ class Import:
         Rename()
         self.gen()
 
+
 class Rename:
     def read_operator(self, path) -> dict:
         with open(path, 'r', encoding='utf-8-sig') as f:
             reading = reader(f)
             names = {
-                ((i[1] or i[0]) if self.revert_mode else i[0]):
-                ((i[0] if self.revert_mode else (i[1] or i[0])), path.stem)
+                ((i[1] or i[0]) if self.revert_mode else i[0]): (
+                    (i[0] if self.revert_mode else (i[1] or i[0])),
+                    path.stem,
+                )
                 for i in reading
             }
         names.pop('Column1', None)
@@ -561,7 +576,7 @@ class Rename:
             lg.warning('该文件不存在，已跳过。', extra={'pos': old_stem})
         return info_data.replace(f'"{old_stem}"', f'"{new_stem}"')
 
-    def __init__(self, revert_mode: bool=False) -> None:
+    def __init__(self, revert_mode: bool = False) -> None:
         self.pos = 'REVERT' if revert_mode else 'RENAME'
         self.revert_mode = revert_mode
         self.img_dir = Path('output/RP/textures/entity')
@@ -577,19 +592,26 @@ class Rename:
             lg.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
             info_data = ''
         stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
-        all_new_stems = {
-            new_stem
-            for new_stem, _
-            in self.read_operator(playerheads_csv).values()
-        } if playerheads_csv.is_file() else set()
+        all_new_stems = (
+            {new_stem for new_stem, _ in self.read_operator(playerheads_csv).values()}
+            if playerheads_csv.is_file()
+            else set()
+        )
         for stem in stems:
             if stem in names:
                 new_stem, work_mode = names.pop(stem)
                 if new_stem != stem:
                     info_data = self.rename_operator(stem, new_stem, info_data)
-                if work_mode == 'name' and playerheads_csv.is_file() \
-                    and new_stem not in all_new_stems:
-                    lg.warning('未在 playerheads 中找到对应的条目，新名称 %s。', new_stem, extra={'pos': stem})
+                if (
+                    work_mode == 'name'
+                    and playerheads_csv.is_file()
+                    and new_stem not in all_new_stems
+                ):
+                    lg.warning(
+                        '未在 playerheads 中找到对应的条目，新名称 %s。',
+                        new_stem,
+                        extra={'pos': stem},
+                    )
             elif stem.isdecimal():
                 new_stem = stem[:-1] + 'r'
                 lg.warning('非法 ID，已更名为 %s。', new_stem, extra={'pos': stem})
@@ -605,6 +627,7 @@ class Rename:
             with open(info_json, 'w', encoding='utf-8') as f:
                 f.write(info_data)
         lg.info('重命名完成！', extra={'pos': self.pos})
+
 
 def diff() -> None:
     pos = 'DIFF'
@@ -627,16 +650,16 @@ def diff() -> None:
         decoded_source = load(f) if source_suffix == '.json' else tuple(reader(f))
     with open(file_dest, 'r', encoding='utf-8-sig') as f:
         decoded_dest = load(f) if dest_suffix == '.json' else tuple(reader(f))
-    excluded = r"\['armor_stand'\]" if source_suffix == '.json' \
-        else r"root\[\d+\]\[2\]"
+    excluded = r"\['armor_stand'\]" if source_suffix == '.json' else r'root\[\d+\]\[2\]'
     result = DeepDiff(
         decoded_source,
         decoded_dest,
-        ignore_order = True,
-        exclude_regex_paths = excluded,
-        verbose_level = 2
+        ignore_order=True,
+        exclude_regex_paths=excluded,
+        verbose_level=2,
     )
     print(result.pretty())
+
 
 def sorting() -> None:
     pos = 'INTERNAL_SORT'
@@ -646,7 +669,7 @@ def sorting() -> None:
         return
     with open(file, 'r', encoding='utf-8-sig') as f:
         data = [(i[0], i[1], i[2]) for i in reader(f)]
-    data.sort(key=lambda x:x[0])
+    data.sort(key=lambda x: x[0])
     with open(file, 'w', encoding='utf-8-sig', newline='') as f:
         writing = writer(f)
         writing.writerows(data)
@@ -656,28 +679,35 @@ def sorting() -> None:
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
     par.add_argument(
-        '-m', '--mode',
+        '-m',
+        '--mode',
         nargs='+',
         default=['get'],
-        help='运行模式，get、idt、imp、all，可多选，默认 get；all = get idt imp'
+        help='运行模式，get、idt、imp、all，可多选，默认 get；all = get idt imp',
     )
     par.add_argument(
-        '-d', '--diff',
+        '-d',
+        '--diff',
         nargs=2,
-        help='比较给出的两个文件，支持 JSON 和 CSV 格式，忽略其他操作'
+        help='比较给出的两个文件，支持 JSON 和 CSV 格式，忽略其他操作',
     )
-    par.add_argument('-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作')
+    par.add_argument(
+        '-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作'
+    )
     par.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
     par.add_argument('-l', '--nodl', action='store_true', help='跳过下载')
     par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
     par.add_argument('-e', '--nocache', action='store_true', help='忽略缓存')
-    par.add_argument('-b', '--nobp', action='store_true', help='跳过 BP 输出，即 blocks 和 items')
+    par.add_argument(
+        '-b', '--nobp', action='store_true', help='跳过 BP 输出，即 blocks 和 items'
+    )
     args = par.parse_args()
     if 'all' in args.mode:
         args.mode = ['get', 'idt', 'imp']
     if args.revert or args.diff:
         args.mode = []
     return args
+
 
 Path('output').mkdir(parents=True, exist_ok=True)
 lg = getLogger(__name__)
