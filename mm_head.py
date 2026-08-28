@@ -577,11 +577,11 @@ class Rename:
             lg.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
             info_data = ''
         stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
-        all_new_stems = set(
+        all_new_stems = {
             new_stem
             for new_stem, _
             in self.read_operator(playerheads_csv).values()
-        ) if playerheads_csv.is_file() else set()
+        } if playerheads_csv.is_file() else set()
         for stem in stems:
             if stem in names:
                 new_stem, work_mode = names.pop(stem)
@@ -594,8 +594,10 @@ class Rename:
                 new_stem = stem[:-1] + 'r'
                 lg.warning('非法 ID，已更名为 %s。', new_stem, extra={'pos': stem})
                 info_data = self.rename_operator(stem, new_stem, info_data)
-            else:
+            elif playerheads_csv.is_file() and stem not in all_new_stems:
                 lg.warning('未在名称文件中找到对应的条目。', extra={'pos': stem})
+        names_popped = [stem for stem, info in names.items() if info[1] == 'name']
+        _ = [names.pop(unrelated) for unrelated in names_popped]
         if names:
             unused = '、'.join(names.keys())
             lg.warning('未使用的条目：%s。', unused, extra={'pos': self.pos})
