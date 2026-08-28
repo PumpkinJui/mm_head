@@ -95,12 +95,15 @@ class Get:
         for i in range(3):
             try:
                 img = get(url, timeout=(6.05, 10))
+                img.raise_for_status()
                 break
-            except exceptions.Timeout:
-                print(f'超时（{i+1}/3）...', end='', flush=True)
-                sleep(1)
             except exceptions.ConnectionError:
                 print(f'连接错误（{i+1}/3）...', end='', flush=True)
+                sleep(1)
+            except exceptions.HTTPError as e:
+                print(f'状态码 {e.response.status_code}（{i+1}/3）...', end='', flush=True)
+            except exceptions.Timeout:
+                print(f'超时（{i+1}/3）...', end='', flush=True)
                 sleep(1)
         else:
             print()
@@ -290,12 +293,18 @@ class Identify:
                     params={'searchterm': url},
                     timeout=(6.05, 10)
                 )
+                res.raise_for_status()
                 break
-            except exceptions.Timeout:
-                print(f'超时（{i+1}/3）...', end='', flush=True)
-                sleep(1)
             except exceptions.ConnectionError:
                 print(f'连接错误（{i+1}/3）...', end='', flush=True)
+                sleep(1)
+            except exceptions.HTTPError as e:
+                data = e.response
+                if 'Just a moment' in data.text:
+                    raise PermissionError from e
+                print(f'状态码 {data.status_code}（{i+1}/3）...', end='', flush=True)
+            except exceptions.Timeout:
+                print(f'超时（{i+1}/3）...', end='', flush=True)
                 sleep(1)
         else:
             print()
@@ -367,6 +376,9 @@ class Identify:
             else:
                 lg.error('%s 不存在！', path, extra={'pos': self.POS})
             lg.info('名称对照完成！', extra={'pos': self.POS})
+        except PermissionError:
+            print()
+            lg.error('已触发 Turnstile！', extra={'pos': self.POS})
         finally:
             with open('output/cache.json', 'w', encoding='utf-8') as wt:
                 dump(self.c_lt, wt, indent=4)
