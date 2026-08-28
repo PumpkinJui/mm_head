@@ -395,7 +395,11 @@ class Import:
         flag = templ[templ.rfind('.', 0, -7)+1:templ.rfind('.')]
         wt_path = f'output/BP/{flag}s/{idn}.{flag}.json'
         uni = tem.replace('yzbwdlt', idn)
-        if flag == 'block' and idn in {'swamp_monster', 'diamivore_3d'}:
+        if flag == 'block' and idn in {
+            'swamp_monster',
+            'swamp_monster_3d',
+            'diamivore_3d'
+        }:
             uni = uni.replace('popped', 'no_reaction')
         self.wt_op(wt_path, uni)
         return True
