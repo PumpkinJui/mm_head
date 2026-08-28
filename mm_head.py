@@ -43,7 +43,7 @@ class Get:
             name = name.translate(trans).lower()
         else:
             mname = False
-        if mname:
+        if mname and name and url:
             name += f'_{url[url.rfind("/")+1:url.rfind("/")+3]}'
         return name, url, mname
 
