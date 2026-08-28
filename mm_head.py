@@ -323,8 +323,17 @@ class Identify:
         if not Path('output/cache.json').is_file():
             return {}
         with open('output/cache.json', 'r', encoding='utf-8') as rd:
+            data = load(rd)
+            data_popped = [i for i, j in data.items() if not j]
+            _ = [data.pop(i) for i in data_popped]
             lg.info('缓存已加载！', extra={'pos': self.POS})
-            return load(rd)
+            return data
+
+    def stripping(self, name: str, identifier: str) -> str:
+        name = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', name)
+        name = name.translate(str.maketrans(' -', '__', '().#')).lower()
+        name += ('_' + identifier)
+        return name
 
     def dout(self) -> None:
         lt = [[i['old'], i['new']] for i in self.dt]
@@ -344,8 +353,7 @@ class Identify:
             if j:
                 self.c_lt[m] = j
         if j:
-            j = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', j)
-            j = j.translate(str.maketrans(' -', '__', '().#')).lower() + '_' + n[4:6]
+            j = self.stripping(j, n[4:6])
             print(j, flush=True)
             if l := self.n_lt.get(j):
                 self.dup[j] = self.dup.get(j, 0) + 1
@@ -379,6 +387,14 @@ class Identify:
         except PermissionError:
             print()
             lg.error('已触发 Turnstile！', extra={'pos': self.POS})
+            if self.c_lt:
+                with open(
+                    'output/name.csv', 'w',
+                    encoding='utf-8-sig', newline=''
+                ) as wt:
+                    lt = [(i, self.stripping(j, i[0:2])) for i, j in self.c_lt.items()]
+                    wt_op = writer(wt)
+                    wt_op.writerows(lt)
         finally:
             with open('output/cache.json', 'w', encoding='utf-8') as wt:
                 dump(self.c_lt, wt, indent=4)
