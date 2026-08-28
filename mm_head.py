@@ -157,7 +157,7 @@ class Get:
             i = 0
             while self.n_lt.get(name, [url])[0] != url:
                 i += 1
-                name = f'{name}_{i}' if i == 1 else f'{name[:name.rfind('_')]}_{i}'
+                name = f'{name}_{i}' if i == 1 else f'{name[:name.rfind("_")]}_{i}'
             dt2['id'] = name
             lg.warning(
                 '对应多重 URL，已将新的更名为 %s。',
@@ -555,7 +555,7 @@ class Rename:
         lg.info('重命名为 %s。', new_stem, extra={'pos': old_stem})
         if new_path.is_file():
             lg.warning('新文件 %s 存在，已覆盖。', new_stem, extra={'pos': old_stem})
-        if old_path.is_file:
+        if old_path.is_file():
             old_path.replace(new_path)
         else:
             lg.warning('该文件不存在，已跳过。', extra={'pos': old_stem})
