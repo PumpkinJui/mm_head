@@ -328,7 +328,7 @@ class Identify:
 
     def dout(self) -> None:
         lt = [[i['old'], i['new']] for i in self.dt]
-        with open('output/name.csv', 'w', encoding='utf-8', newline='') as wt:
+        with open('output/name.csv', 'w', encoding='utf-8-sig', newline='') as wt:
             wt_op = writer(wt)
             wt_op.writerows(lt)
 
@@ -616,6 +616,21 @@ def diff() -> None:
     )
     print(result.pretty())
 
+def sorting() -> None:
+    pos = 'INTERNAL_SORT'
+    file = Path('templates/playerheads.csv')
+    if not file.is_file():
+        lg.error('译名模板不存在！', extra={'pos': pos})
+        return
+    with open(file, 'r', encoding='utf-8-sig') as f:
+        data = [(i[0], i[1], i[2]) for i in reader(f)]
+    data.sort(key=lambda x:x[0])
+    with open(file, 'w', encoding='utf-8-sig', newline='') as f:
+        writing = writer(f)
+        writing.writerows(data)
+    lg.info('排序完成！', extra={'pos': pos})
+
+
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
     par.add_argument(
@@ -627,7 +642,7 @@ def argp():
     par.add_argument(
         '-d', '--diff',
         nargs=2,
-        help='比较给出的两个文件，目前支持 JSON 和 CSV 格式，忽略其他操作'
+        help='比较给出的两个文件，支持 JSON 和 CSV 格式，忽略其他操作'
     )
     par.add_argument('-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作')
     par.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
