@@ -264,7 +264,7 @@ class Get:
             stem = f.stem
             with open(f, 'r', encoding='utf-8') as rd:
                 data = rd.read().splitlines()
-            lg.info('%s - L%s',
+            lg.warning('%s - L%s',
                 stem, len(data),
                 extra={'pos': self.POS}
             )
