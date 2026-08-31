@@ -3,7 +3,7 @@ name = "mm_head"
 version = "0.0.1"
 description = "量筒的密室杀手配套脚本"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "deepdiff>=9.1.0",
     "pillow>=12.3.0",

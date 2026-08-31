@@ -11,8 +11,6 @@
 - diff 函数，用于比较给出的 JSON 或 CSV 文件有何差异。
 - sorting 函数，用于将给定的 CSV 文件按第一列字母顺序排序。
 
-本脚本最低运行版本为 Python 3.10。
-
 本脚本为命令行脚本，请使用 `uv run mm_head.py -h` 查看帮助信息。
 
 [![MCH Banner](minecraft-heads_banner_600x200.png)](https://minecraft-heads.com/)
