@@ -10,7 +10,7 @@
 - Rename 类，用于根据 `/templates/playerheads.csv` 和 `/output/name.csv`，重命名和反命名皮肤文件。
 - diff 函数，用于比较给出的 JSON 或 CSV 文件有何差异。
 
-本脚本最低运行版本为 Python 3.9。
+本脚本最低运行版本为 Python 3.10。
 
 本脚本为命令行脚本，请使用 `python mm_head.py -h` 查看帮助信息。
 

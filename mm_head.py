@@ -662,10 +662,13 @@ def diff() -> None:
 
 
 def sorting() -> None:
-    pos = 'INTERNAL_SORT'
-    file = Path('templates/playerheads.csv')
+    pos = 'SORT'
+    file = Path(argp().sort)
     if not file.is_file():
-        lg.error('译名模板不存在！', extra={'pos': pos})
+        lg.error('文件不存在！', extra={'pos': pos})
+        return
+    if file.suffix.lower() != '.csv':
+        lg.error('后缀名不支持！', extra={'pos': pos})
         return
     with open(file, 'r', encoding='utf-8-sig') as f:
         data = [(i[0], i[1], i[2]) for i in reader(f)]
@@ -678,34 +681,25 @@ def sorting() -> None:
 
 def argp():
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
-    par.add_argument(
-        '-m',
-        '--mode',
-        nargs='+',
-        default=['get'],
-        help='运行模式，get、idt、imp、all，可多选，默认 get；all = get idt imp',
-    )
-    par.add_argument(
-        '-d',
-        '--diff',
-        nargs=2,
-        help='比较给出的两个文件，支持 JSON 和 CSV 格式，忽略其他操作',
-    )
-    par.add_argument(
-        '-r', '--revert', action='store_true', help='回退图片命名更改，忽略其他操作'
-    )
-    par.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
-    par.add_argument('-l', '--nodl', action='store_true', help='跳过下载')
-    par.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
-    par.add_argument('-e', '--nocache', action='store_true', help='忽略缓存')
-    par.add_argument(
+    subpar = par.add_subparsers(dest='cmd')
+    p_get = subpar.add_parser('get', help='提取头颅信息')
+    p_get.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
+    p_get.add_argument('-l', '--nodl', action='store_true', help='跳过皮肤文件下载')
+    p_get.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
+    p_idt = subpar.add_parser('idt', help='获取 ID 对应的名称')
+    p_idt.add_argument('-e', '--nocache', action='store_true', help='忽略缓存')
+    p_imp = subpar.add_parser('imp', help='生成导入数据')
+    p_imp.add_argument(
         '-b', '--nobp', action='store_true', help='跳过 BP 输出，即 blocks 和 items'
     )
+    subpar.add_parser('revert', help='回退图片命名更改')
+    p_diff = subpar.add_parser('diff', help='比较两个文件')
+    p_diff.add_argument(
+        'files', nargs=2, help='要比较的两个文件，支持 JSON 和 CSV 格式'
+    )
+    p_sort = subpar.add_parser('sort', help='排序文件')
+    p_sort.add_argument('file', help='要排序的 CSV 文件')
     args = par.parse_args()
-    if 'all' in args.mode:
-        args.mode = ['get', 'idt', 'imp']
-    if args.revert or args.diff:
-        args.mode = []
     return args
 
 
@@ -723,21 +717,20 @@ lg.addHandler(fil_h)
 lg.addHandler(std_h)
 if __name__ == '__main__':
     try:
-        if 'get' in argp().mode:
-            Get()
-            print()
-        if 'idt' in argp().mode:
-            Identify()
-            print()
-        if 'imp' in argp().mode:
-            Import()
-            print()
-        if argp().revert and not argp().diff:
-            Rename(True)
-            print()
-        if argp().diff and not argp().revert:
-            diff()
-            print()
+        match argp().cmd:
+            case 'get':
+                Get()
+            case 'idt':
+                Identify()
+            case 'imp':
+                Import()
+            case 'revert':
+                Rename(True)
+            case 'diff':
+                diff()
+            case 'sort':
+                sorting()
+        print()
     except Exception:
         lg.exception('未知错误。', extra={'pos': __name__})
     finally:
