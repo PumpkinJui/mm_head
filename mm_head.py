@@ -23,7 +23,8 @@ from requests import exceptions, get
 class Get:
     POS = 'GET'
 
-    def url_name(self, data: str) -> tuple:
+    @staticmethod
+    def url_name(data: str) -> tuple:
         name, url, mname = None, None, True
         trans = str.maketrans(' -', '__', '().#')
         if 'value:' in data:
@@ -119,7 +120,8 @@ class Get:
         print('成功！', flush=True)
         return True
 
-    def rect(self, img_path) -> bool:
+    @staticmethod
+    def rect(img_path) -> bool:
         temp_path = img_path.with_name(img_path.name + '.tmp')
         with Image.open(img_path) as img:
             if img.size != (64, 32):
@@ -175,7 +177,8 @@ class Get:
             self.n_lt[name] = (url, dt2['meaningful'])
         return dt1
 
-    def prune(self, dt: dict) -> tuple:
+    @staticmethod
+    def prune(dt: dict) -> tuple:
         dtn = {}
         url = []
         for i, j in dt.items():
@@ -293,7 +296,8 @@ class Get:
 class Identify:
     POS = 'IDT'
 
-    def ext(self, url: str, msg: str) -> str:
+    @staticmethod
+    def ext(url: str, msg: str) -> str:
         sleep(0.2)
         for i in range(3):
             try:
@@ -338,17 +342,12 @@ class Identify:
             lg.info('缓存已加载！', extra={'pos': self.POS})
             return data
 
-    def stripping(self, name: str, identifier: str) -> str:
+    @staticmethod
+    def stripping(name: str, identifier: str) -> str:
         name = sub(r'&(#[\d]+|#x[\da-fA-F]+|[a-zA-Z]+);', '', name)
         name = name.translate(str.maketrans(' -', '__', '().#')).lower()
         name += '_' + identifier
         return name
-
-    def dout(self) -> None:
-        lt = [[i['old'], i['new']] for i in self.dt]
-        with open('output/name.csv', 'w', encoding='utf-8-sig', newline='') as wt:
-            wt_op = writer(wt)
-            wt_op.writerows(lt)
 
     def pro(self, data: dict, ln: str) -> None:
         n, m = next(iter(data.items()))
@@ -391,7 +390,10 @@ class Identify:
                 lg.info('%s - L%s', path, len(data), extra={'pos': self.POS})
                 for i, j in enumerate(data):
                     self.pro(j, str(i + 1).zfill(3))
-                self.dout()
+                lt = [[i['old'], i['new']] for i in self.dt]
+                with open('output/name.csv', 'w', encoding='utf-8-sig', newline='') as wt:
+                    wt_op = writer(wt)
+                    wt_op.writerows(lt)
             else:
                 lg.error('%s 不存在！', path, extra={'pos': self.POS})
             lg.info('名称对照完成！', extra={'pos': self.POS})
@@ -414,7 +416,8 @@ class Identify:
 class Import:
     POS = 'IMP'
 
-    def blotem(self, idn: str, templ: str) -> bool:
+    @staticmethod
+    def blotem(idn: str, templ: str) -> bool:
         if not Path(templ).is_file():
             return False
         with open(templ, 'r', encoding='utf-8') as rd:
@@ -428,10 +431,11 @@ class Import:
             'diamivore_3d',
         }:
             uni = uni.replace('popped', 'no_reaction')
-        self.wt_op(wt_path, uni)
+        Import.wt_op(wt_path, uni)
         return True
 
-    def terlang(self, idn_lt: tuple) -> None:
+    @staticmethod
+    def terlang(idn_lt: tuple) -> None:
         fb = True
         if Path('templates/playerheads.csv').is_file():
             fb = False
@@ -439,7 +443,7 @@ class Import:
                 rd_op = reader(rd)
                 data = {i[1]: i[2] for i in rd_op}
         else:
-            lg.warning('未找到译名文件，使用备用方案！', extra={'pos': self.POS})
+            lg.warning('未找到译名文件，使用备用方案！', extra={'pos': 'IMP'})
         ter = '\n'.join(
             f'        "player_head_{i[0]}": {{ "textures": "textures/entity/{i[0]}" }},'
             for i in idn_lt
@@ -489,9 +493,9 @@ class Import:
             "tile.player_head:jhy2189.name=JHY2189's Head\n"
             "tile.player_head:chthollies.name=Chthollies's Head\n"
         )
-        self.wt_op('output/RP/textures/terrain_texture.json', ter_full)
-        self.wt_op('output/RP/texts/en_US.lang', enl_full)
-        self.wt_op('output/RP/texts/zh_CN.lang', zhl_full)
+        Import.wt_op('output/RP/textures/terrain_texture.json', ter_full)
+        Import.wt_op('output/RP/texts/en_US.lang', enl_full)
+        Import.wt_op('output/RP/texts/zh_CN.lang', zhl_full)
 
     def gen(self) -> None:
         block_tem = 'templates/yzbwdlt.block.json'
