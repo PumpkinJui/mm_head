@@ -10,11 +10,14 @@ dependencies = [
     "requests>=2.34.2",
 ]
 
-[tool.ruff.format]
-quote-style = "single"
-
 [dependency-groups]
 dev = [
     "pylint>=4.0.8",
     "ruff>=0.16.5",
 ]
+
+[tool.pylint."messages control"]
+disable = ["missing-module-docstring", "missing-class-docstring", "missing-function-docstring", "broad-exception-caught"]
+
+[tool.ruff.format]
+quote-style = "single"
