@@ -391,9 +391,9 @@ class Identify:
                 for i, j in enumerate(data):
                     self.pro(j, str(i + 1).zfill(3))
                 lt = [[i['old'], i['new']] for i in self.dt]
-                with open('output/name.csv', 'w', encoding='utf-8-sig', newline='') as wt:
-                    wt_op = writer(wt)
-                    wt_op.writerows(lt)
+                with open('output/name.csv', 'w', encoding='utf-8-sig', newline='') as f:
+                    writing = writer(f)
+                    writing.writerows(lt)
             else:
                 lg.error('%s 不存在！', path, extra={'pos': self.POS})
             lg.info('名称对照完成！', extra={'pos': self.POS})
@@ -403,10 +403,10 @@ class Identify:
             if self.c_lt:
                 with open(
                     'output/name.csv', 'w', encoding='utf-8-sig', newline=''
-                ) as wt:
+                ) as f:
                     lt = [(i, self.stripping(j, i[0:2])) for i, j in self.c_lt.items()]
-                    wt_op = writer(wt)
-                    wt_op.writerows(lt)
+                    writing = writer(f)
+                    writing.writerows(lt)
         finally:
             with open('output/cache.json', 'w', encoding='utf-8') as wt:
                 dump(self.c_lt, wt, indent=4)
@@ -431,7 +431,7 @@ class Import:
             'diamivore_3d',
         }:
             uni = uni.replace('popped', 'no_reaction')
-        Import.wt_op(wt_path, uni)
+        Import.writing(wt_path, uni)
         return True
 
     @staticmethod
@@ -439,9 +439,9 @@ class Import:
         fb = True
         if Path('templates/playerheads.csv').is_file():
             fb = False
-            with open('templates/playerheads.csv', 'r', encoding='utf-8-sig') as rd:
-                rd_op = reader(rd)
-                data = {i[1]: i[2] for i in rd_op}
+            with open('templates/playerheads.csv', 'r', encoding='utf-8-sig') as f:
+                reading = reader(f)
+                data = {i[1]: i[2] for i in reading}
         else:
             lg.warning('未找到译名文件，使用备用方案！', extra={'pos': 'IMP'})
         ter = '\n'.join(
@@ -493,9 +493,9 @@ class Import:
             "tile.player_head:jhy2189.name=JHY2189's Head\n"
             "tile.player_head:chthollies.name=Chthollies's Head\n"
         )
-        Import.wt_op('output/RP/textures/terrain_texture.json', ter_full)
-        Import.wt_op('output/RP/texts/en_US.lang', enl_full)
-        Import.wt_op('output/RP/texts/zh_CN.lang', zhl_full)
+        Import.writing('output/RP/textures/terrain_texture.json', ter_full)
+        Import.writing('output/RP/texts/en_US.lang', enl_full)
+        Import.writing('output/RP/texts/zh_CN.lang', zhl_full)
 
     def gen(self) -> None:
         block_tem = 'templates/yzbwdlt.block.json'
@@ -531,10 +531,10 @@ class Import:
         lg.info('导入数据生成完成！', extra={'pos': self.POS})
 
     @staticmethod
-    def wt_op(path: str, con: str) -> None:
+    def writing(path: str, content: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as wt:
-            wt.write(con)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
 
     def __init__(self) -> None:
         Rename()
@@ -542,7 +542,7 @@ class Import:
 
 
 class Rename:
-    def read_operator(self, path) -> dict:
+    def reading(self, path) -> dict:
         with open(path, 'r', encoding='utf-8-sig') as f:
             reading = reader(f)
             names = {
@@ -561,14 +561,14 @@ class Rename:
         name_csv = Path('output/name.csv')
         name_list = {}
         if name_csv.is_file():
-            name_list.update(self.read_operator(name_csv))
+            name_list.update(self.reading(name_csv))
             lg.info('工作在 name 模式下。', extra={'pos': self.pos})
         if playerheads_csv.is_file():
-            name_list.update(self.read_operator(playerheads_csv))
+            name_list.update(self.reading(playerheads_csv))
             lg.info('工作在 playerheads 模式下。', extra={'pos': self.pos})
         return name_list
 
-    def rename_operator(self, old_stem: str, new_stem: str, info_data: str) -> str:
+    def renaming(self, old_stem: str, new_stem: str, info_data: str) -> str:
         old_path = self.img_dir / f'{old_stem}.png'
         new_path = self.img_dir / f'{new_stem}.png'
         lg.info('重命名为 %s。', new_stem, extra={'pos': old_stem})
@@ -597,7 +597,7 @@ class Rename:
             info_data = ''
         stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
         all_new_stems = (
-            {new_stem for new_stem, _ in self.read_operator(playerheads_csv).values()}
+            {new_stem for new_stem, _ in self.reading(playerheads_csv).values()}
             if playerheads_csv.is_file()
             else set()
         )
@@ -605,7 +605,7 @@ class Rename:
             if stem in names:
                 new_stem, work_mode = names.pop(stem)
                 if new_stem != stem:
-                    info_data = self.rename_operator(stem, new_stem, info_data)
+                    info_data = self.renaming(stem, new_stem, info_data)
                 if (
                     work_mode == 'name'
                     and playerheads_csv.is_file()
@@ -619,7 +619,7 @@ class Rename:
             elif stem.isdecimal():
                 new_stem = stem[:-1] + 'r'
                 lg.warning('非法 ID，已更名为 %s。', new_stem, extra={'pos': stem})
-                info_data = self.rename_operator(stem, new_stem, info_data)
+                info_data = self.renaming(stem, new_stem, info_data)
             elif playerheads_csv.is_file() and stem not in all_new_stems:
                 lg.warning('未在名称文件中找到对应的条目。', extra={'pos': stem})
         names_popped = [stem for stem, info in names.items() if info[1] == 'name']
