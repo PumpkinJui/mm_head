@@ -74,7 +74,7 @@ class Get:
         name, url, meaningful = self.get_name(data)
         if not (name or url or meaningful):
             print()
-            lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
+            logger.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
         print(name, end=' - ', flush=True)
         return {
@@ -116,7 +116,7 @@ class Get:
                 sleep(1)
         else:
             print()
-            lg.error('已超时。', extra={'pos': f'L{self.ln} - {name}'})
+            logger.error('已超时。', extra={'pos': f'L{self.ln} - {name}'})
             return False
         with open(img_path, 'wb') as f:
             f.write(response.content)
@@ -155,7 +155,7 @@ class Get:
             if not (idn := dt3.get(dt2['location'])):
                 dt1[stem].append(dt2)
             else:
-                lg.warning(
+                logger.warning(
                     '位置 %s 已存在头颅 %s。',
                     dt2['location'],
                     idn,
@@ -170,7 +170,7 @@ class Get:
                 i += 1
                 name = f'{name}_{i}' if i == 1 else f'{name[: name.rfind("_")]}_{i}'
             dt2['id'] = name
-            lg.warning(
+            logger.warning(
                 '对应多重 URL，已将新的更名为 %s。',
                 name,
                 extra={'pos': f'L{self.ln} - {old}'},
@@ -217,7 +217,7 @@ class Get:
             if not j.strip():
                 continue
             if not argp().armorstand and 'armor_stand' in j:
-                lg.info('盔甲架输出已关闭。', extra={'pos': f'L{self.ln}'})
+                logger.info('盔甲架输出已关闭。', extra={'pos': f'L{self.ln}'})
                 continue
             try:
                 print(f'L{self.ln}', end=' - ', flush=True)
@@ -225,7 +225,7 @@ class Get:
                 dt = self.merge(dt, dt_pending, stem)
             except Exception:
                 print()
-                lg.exception('未知错误。', extra={'pos': f'L{self.ln}'})
+                logger.exception('未知错误。', extra={'pos': f'L{self.ln}'})
         print()
         return dt
 
@@ -241,13 +241,13 @@ class Get:
             if (nurl := names.get(url)) and name != nurl:
                 dup[name] = nurl
                 data = data.replace(f'"{name}"', f'"{nurl}"')
-                lg.warning(
+                logger.warning(
                     'URL 对应多重名称，已统一为 %s。', nurl, extra={'pos': f'{name}'}
                 )
                 if (old := self.img_dir / f'{name}.png').is_file():
                     old.replace(self.img_dir / f'{nurl}.png')
                 else:
-                    lg.warning('该文件不存在，已跳过。', extra={'pos': f'{name}'})
+                    logger.warning('该文件不存在，已跳过。', extra={'pos': f'{name}'})
         with open('output/info.json', 'w', encoding='utf-8') as wt:
             wt.write(data)
         if not argp().nourl:
@@ -271,22 +271,22 @@ class Get:
         f = None
         urls = []
         if argp().nodl:
-            lg.info('跳过下载已开启。', extra={'pos': self.POS})
+            logger.info('跳过下载已开启。', extra={'pos': self.POS})
         else:
             self.img_dir.mkdir(parents=True, exist_ok=True)
         if argp().nourl:
-            lg.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
+            logger.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
         for f in Path('raw').glob('*.txt'):
             stem = f.stem
             with open(f, 'r', encoding='utf-8') as rd:
                 data = rd.read().splitlines()
-            lg.warning('%s - L%s', stem, len(data), extra={'pos': self.POS})
+            logger.warning('%s - L%s', stem, len(data), extra={'pos': self.POS})
             dtn, url = self.prune(self.pro(stem, data))
             dt |= dtn
             if url:
                 urls.extend(url)
         if not f:
-            lg.warning(
+            logger.warning(
                 '未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS}
             )
             data = [input('输入待处理项：')]
@@ -294,7 +294,7 @@ class Get:
             if url:
                 urls.extend(url)
         self.out(dt, urls)
-        lg.info('信息提取完成！', extra={'pos': self.POS})
+        logger.info('信息提取完成！', extra={'pos': self.POS})
 
 
 class Identify:
@@ -325,7 +325,7 @@ class Identify:
                 sleep(1)
         else:
             print()
-            lg.error('已超时。', extra={'pos': msg})
+            logger.error('已超时。', extra={'pos': msg})
             return ''
         data = res.text
         if 'No Heads available' in data:
@@ -335,7 +335,7 @@ class Identify:
 
     def cache(self) -> dict:
         if argp().nocache:
-            lg.info('缓存已忽略！', extra={'pos': self.POS})
+            logger.info('缓存已忽略！', extra={'pos': self.POS})
             return {}
         if not Path('output/cache.json').is_file():
             return {}
@@ -343,7 +343,7 @@ class Identify:
             data = load(rd)
             data_popped = [i for i, j in data.items() if not j]
             _ = [data.pop(i) for i in data_popped]
-            lg.info('缓存已加载！', extra={'pos': self.POS})
+            logger.info('缓存已加载！', extra={'pos': self.POS})
             return data
 
     @staticmethod
@@ -371,14 +371,14 @@ class Identify:
                 self.dup[j] = self.dup.get(j, 0) + 1
                 k = j
                 j += f'_{self.dup[j]}'
-                lg.warning(
+                logger.warning(
                     '与 %s 拥有共同的新名称，已更名为 %s。', l, j, extra={'pos': msg}
                 )
             self.n_lt[j] = m
         else:
             print(m, flush=True)
             j = m
-            lg.warning('无可用名称。', extra={'pos': msg})
+            logger.warning('无可用名称。', extra={'pos': msg})
         self.dt.append({'old': m, 'new': j})
 
     def __init__(self) -> None:
@@ -391,7 +391,7 @@ class Identify:
             if Path(path).is_file():
                 with open(path, 'r', encoding='utf-8') as rd:
                     data = load(rd)
-                lg.info('%s - L%s', path, len(data), extra={'pos': self.POS})
+                logger.info('%s - L%s', path, len(data), extra={'pos': self.POS})
                 for i, j in enumerate(data):
                     self.pro(j, str(i + 1).zfill(3))
                 lt = [[i['old'], i['new']] for i in self.dt]
@@ -401,11 +401,11 @@ class Identify:
                     writing = writer(f)
                     writing.writerows(lt)
             else:
-                lg.error('%s 不存在！', path, extra={'pos': self.POS})
-            lg.info('名称对照完成！', extra={'pos': self.POS})
+                logger.error('%s 不存在！', path, extra={'pos': self.POS})
+            logger.info('名称对照完成！', extra={'pos': self.POS})
         except PermissionError:
             print()
-            lg.error('已触发 Turnstile！', extra={'pos': self.POS})
+            logger.error('已触发 Turnstile！', extra={'pos': self.POS})
             if self.c_lt:
                 with open(
                     'output/name.csv', 'w', encoding='utf-8-sig', newline=''
@@ -416,7 +416,7 @@ class Identify:
         finally:
             with open('output/cache.json', 'w', encoding='utf-8') as wt:
                 dump(self.c_lt, wt, indent=4)
-                lg.info('缓存已输出！', extra={'pos': self.POS})
+                logger.info('缓存已输出！', extra={'pos': self.POS})
 
 
 class Import:
@@ -449,7 +449,7 @@ class Import:
                 reading = reader(f)
                 data = {i[1]: i[2] for i in reading}
         else:
-            lg.warning('未找到译名文件，使用备用方案！', extra={'pos': 'IMP'})
+            logger.warning('未找到译名文件，使用备用方案！', extra={'pos': 'IMP'})
         ter = '\n'.join(
             f'        "player_head_{i[0]}": {{ "textures": "textures/entity/{i[0]}" }},'
             for i in idn_lt
@@ -510,31 +510,31 @@ class Import:
         block_info, item_info = True, True
         stems = tuple(i.stem for i in img_dir.glob('*.png'))
         if not stems:
-            lg.error('无 png 文件！', extra={'pos': self.POS})
+            logger.error('无 png 文件！', extra={'pos': self.POS})
             return
         stems = tuple(
             (i, (i[: i.rfind('_')] if '_' in {i[-3], i[-2]} else i)) for i in stems
         )
         self.terlang(stems)
         if argp().nobp:
-            lg.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
+            logger.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
         else:
             for i, _ in stems:
                 if not self.blotem(i, block_tem) and block_info:
-                    lg.error(
+                    logger.error(
                         '未找到模板 %s，跳过 block 生成！',
                         block_tem,
                         extra={'pos': self.POS},
                     )
                     block_info = False
                 if not self.blotem(i, item_tem) and item_info:
-                    lg.error(
+                    logger.error(
                         '未找到模板 %s，跳过 item 生成！',
                         item_tem,
                         extra={'pos': self.POS},
                     )
                     item_info = False
-        lg.info('导入数据生成完成！', extra={'pos': self.POS})
+        logger.info('导入数据生成完成！', extra={'pos': self.POS})
 
     @staticmethod
     def writing(path: str, content: str) -> None:
@@ -568,22 +568,24 @@ class Rename:
         name_list = {}
         if name_csv.is_file():
             name_list.update(self.reading(name_csv))
-            lg.info('工作在 name 模式下。', extra={'pos': self.pos})
+            logger.info('工作在 name 模式下。', extra={'pos': self.pos})
         if playerheads_csv.is_file():
             name_list.update(self.reading(playerheads_csv))
-            lg.info('工作在 playerheads 模式下。', extra={'pos': self.pos})
+            logger.info('工作在 playerheads 模式下。', extra={'pos': self.pos})
         return name_list
 
     def renaming(self, old_stem: str, new_stem: str, info_data: str) -> str:
         old_path = self.img_dir / f'{old_stem}.png'
         new_path = self.img_dir / f'{new_stem}.png'
-        lg.info('重命名为 %s。', new_stem, extra={'pos': old_stem})
+        logger.info('重命名为 %s。', new_stem, extra={'pos': old_stem})
         if new_path.is_file():
-            lg.warning('新文件 %s 存在，已覆盖。', new_stem, extra={'pos': old_stem})
+            logger.warning(
+                '新文件 %s 存在，已覆盖。', new_stem, extra={'pos': old_stem}
+            )
         if old_path.is_file():
             old_path.replace(new_path)
         else:
-            lg.warning('该文件不存在，已跳过。', extra={'pos': old_stem})
+            logger.warning('该文件不存在，已跳过。', extra={'pos': old_stem})
         return info_data.replace(f'"{old_stem}"', f'"{new_stem}"')
 
     def __init__(self, revert_mode: bool = False) -> None:
@@ -593,13 +595,13 @@ class Rename:
         info_json = Path('output/info.json')
         playerheads_csv = Path('templates/playerheads.csv')
         if not (names := self.read_names()):
-            lg.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
+            logger.error('未找到名称文件，跳过重命名！', extra={'pos': self.pos})
             return
         if info_json.is_file():
             with open(info_json, 'r', encoding='utf-8') as f:
                 info_data = f.read()
         else:
-            lg.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
+            logger.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
             info_data = ''
         stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
         all_new_stems = (
@@ -617,44 +619,44 @@ class Rename:
                     and playerheads_csv.is_file()
                     and new_stem not in all_new_stems
                 ):
-                    lg.warning(
+                    logger.warning(
                         '未在 playerheads 中找到对应的条目，新名称 %s。',
                         new_stem,
                         extra={'pos': stem},
                     )
             elif stem.isdecimal():
                 new_stem = stem[:-1] + 'r'
-                lg.warning('非法 ID，已更名为 %s。', new_stem, extra={'pos': stem})
+                logger.warning('非法 ID，已更名为 %s。', new_stem, extra={'pos': stem})
                 info_data = self.renaming(stem, new_stem, info_data)
             elif playerheads_csv.is_file() and stem not in all_new_stems:
-                lg.warning('未在名称文件中找到对应的条目。', extra={'pos': stem})
+                logger.warning('未在名称文件中找到对应的条目。', extra={'pos': stem})
         names_popped = [stem for stem, info in names.items() if info[1] == 'name']
         _ = [names.pop(unrelated) for unrelated in names_popped]
         if names:
             unused = '、'.join(names.keys())
-            lg.warning('未使用的条目：%s。', unused, extra={'pos': self.pos})
+            logger.warning('未使用的条目：%s。', unused, extra={'pos': self.pos})
         if info_json.is_file():
             with open(info_json, 'w', encoding='utf-8') as f:
                 f.write(info_data)
-        lg.info('重命名完成！', extra={'pos': self.pos})
+        logger.info('重命名完成！', extra={'pos': self.pos})
 
 
 def diff() -> None:
     pos = 'DIFF'
     file_source, file_dest = map(Path, argp().files)
     if not file_source.is_file():
-        lg.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
+        logger.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
         return
     if not file_dest.is_file():
-        lg.error('%s 文件不存在！', str(file_dest), extra={'pos': pos})
+        logger.error('%s 文件不存在！', str(file_dest), extra={'pos': pos})
         return
     source_suffix = file_source.suffix.lower()
     dest_suffix = file_dest.suffix.lower()
     if source_suffix != dest_suffix:
-        lg.error('后缀名不一致！', extra={'pos': pos})
+        logger.error('后缀名不一致！', extra={'pos': pos})
         return
     if not {source_suffix, dest_suffix}.issubset({'.json', '.csv'}):
-        lg.error('后缀名不支持！', extra={'pos': pos})
+        logger.error('后缀名不支持！', extra={'pos': pos})
         return
     with open(file_source, 'r', encoding='utf-8-sig') as f:
         decoded_source = load(f) if source_suffix == '.json' else tuple(reader(f))
@@ -675,10 +677,10 @@ def sorting() -> None:
     pos = 'SORT'
     file = Path(argp().file)
     if not file.is_file():
-        lg.error('文件不存在！', extra={'pos': pos})
+        logger.error('文件不存在！', extra={'pos': pos})
         return
     if file.suffix.lower() != '.csv':
-        lg.error('后缀名不支持！', extra={'pos': pos})
+        logger.error('后缀名不支持！', extra={'pos': pos})
         return
     with open(file, 'r', encoding='utf-8-sig') as f:
         data = [(i[0], i[1], i[2]) for i in reader(f)]
@@ -686,7 +688,7 @@ def sorting() -> None:
     with open(file, 'w', encoding='utf-8-sig', newline='') as f:
         writing = writer(f)
         writing.writerows(data)
-    lg.info('排序完成！', extra={'pos': pos})
+    logger.info('排序完成！', extra={'pos': pos})
 
 
 def argp():
@@ -714,17 +716,17 @@ def argp():
 
 
 Path('output').mkdir(parents=True, exist_ok=True)
-lg = getLogger(__name__)
-lg.setLevel(DEBUG)
-lg.handlers.clear()
+logger = getLogger(__name__)
+logger.setLevel(DEBUG)
+logger.handlers.clear()
 form = Formatter('%(pos)s - %(levelname)s - %(message)s')
 fil_h = FileHandler('output/debug.log', 'w', encoding='utf-8')
 std_h = StreamHandler()
 fil_h.setFormatter(form)
 std_h.setFormatter(form)
 fil_h.setLevel(WARNING)
-lg.addHandler(fil_h)
-lg.addHandler(std_h)
+logger.addHandler(fil_h)
+logger.addHandler(std_h)
 if __name__ == '__main__':
     try:
         match argp().cmd:
@@ -742,7 +744,7 @@ if __name__ == '__main__':
                 sorting()
         print()
     except Exception:
-        lg.exception('未知错误。', extra={'pos': __name__})
+        logger.exception('未知错误。', extra={'pos': __name__})
     finally:
         _ = input('按回车退出...')
 shutdown()
