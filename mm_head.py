@@ -631,7 +631,7 @@ class Rename:
 
 def diff() -> None:
     pos = 'DIFF'
-    file_source, file_dest = map(Path, argp().diff)
+    file_source, file_dest = map(Path, argp().files)
     if not file_source.is_file():
         lg.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
         return
@@ -663,7 +663,7 @@ def diff() -> None:
 
 def sorting() -> None:
     pos = 'SORT'
-    file = Path(argp().sort)
+    file = Path(argp().file)
     if not file.is_file():
         lg.error('文件不存在！', extra={'pos': pos})
         return
