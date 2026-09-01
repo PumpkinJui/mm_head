@@ -16,4 +16,5 @@ quote-style = "single"
 [dependency-groups]
 dev = [
     "pylint>=4.0.8",
+    "ruff>=0.16.5",
 ]
