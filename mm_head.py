@@ -24,70 +24,74 @@ class Get:
     POS = 'GET'
 
     @staticmethod
-    def url_name(data: str) -> tuple:
-        name, url, mname = None, None, True
+    def get_name(data: str) -> tuple:
+        name, url, meaningful = None, None, True
         trans = str.maketrans(' -', '__', '().#')
         if 'value:' in data:
-            bsr = search(r'value: ?"([^\"]+)"', data).group(1)
-            bsr += '=' * (-len(bsr) % 4)
-            bsd = b64d(bsr).decode()
-            url = loads(bsd)['textures']['SKIN']['url'].replace('http:', 'https:')
+            b64_raw = search(r'value: ?"([^\"]+)"', data).group(1)
+            b64_raw += '=' * (-len(b64_raw) % 4)
+            b64_decoded = b64d(b64_raw).decode()
+            url = loads(b64_decoded)['textures']['SKIN']['url'].replace(
+                'http:', 'https:'
+            )
             name = search(r'(?:name|text): ?"([^"]*)"', data)
             if 'minecraft:custom_name' in data and 'text:' not in data:
                 name = search(r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data)
             name = name.group(1).translate(trans).lower()
             if not name or name == 'textures':
                 name = url[url.rfind('/') + 1 : url.rfind('/') + 7]
-                mname = False
+                meaningful = False
         elif 'head:' in data:
             name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1)
             name = name.translate(trans).lower()
         else:
-            mname = False
-        if mname and name and url:
+            meaningful = False
+        if meaningful and name and url:
             name += f'_{url[url.rfind("/") + 1 : url.rfind("/") + 3]}'
-        return name, url, mname
+        return name, url, meaningful
 
-    def ext(self, data: str) -> dict:
-        fac, rot = None, None
-        ars = 'armor_stand' in data
-        loc = search(r' ([\d\-. ]+) ', data).group(1)
-        if '.' in loc:
-            loc = [int(float(i)) for i in loc.split(' ')]
-            loc[1] += 1
-            loc = ' '.join(map(str, loc))
+    def extract(self, data: str) -> dict:
+        facing, rotation = None, None
+        armor_stand = 'armor_stand' in data
+        location = search(r' ([\d\-. ]+) ', data).group(1)
+        if '.' in location:
+            location = [int(float(i)) for i in location.split(' ')]
+            location[1] += 1
+            location = ' '.join(map(str, location))
         if 'rotation' in data:
-            rot = int(search(r'rotation=(\d+)', data).group(1))
+            rotation = int(search(r'rotation=(\d+)', data).group(1))
         elif 'Rotation' in data:
-            rot_map = [180]
-            rot_map.extend(int(-157.5 + i * 22.5) for i in range(15))
-            rot_ori = search(r'Rotation: ?\[([\d\-.]+)f', data).group(1)
-            rot_ori = '180.0' if rot_ori == '-180.0' else rot_ori
-            rot_closest = min(rot_map, key=lambda x: abs(int(float(rot_ori)) - x))
-            rot = rot_map.index(rot_closest)
+            rotation_map = [180]
+            rotation_map.extend(int(-157.5 + i * 22.5) for i in range(15))
+            rotation_raw = search(r'Rotation: ?\[([\d\-.]+)f', data).group(1)
+            rotation_raw = '180.0' if rotation_raw == '-180.0' else rotation_raw
+            rotation_closest = min(
+                rotation_map, key=lambda x: abs(int(float(rotation_raw)) - x)
+            )
+            rotation = rotation_map.index(rotation_closest)
         elif 'facing' in data:
-            fac = search(r'facing=([^,\]]+)', data).group(1)
-        name, url, mname = self.url_name(data)
-        if not (name or url or mname):
+            facing = search(r'facing=([^,\]]+)', data).group(1)
+        name, url, meaningful = self.get_name(data)
+        if not (name or url or meaningful):
             print()
             lg.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
             return {}
         print(name, end=' - ', flush=True)
         return {
             'id': name,
-            'location': loc,
-            'rotation': rot,
-            'facing': fac,
+            'location': location,
+            'rotation': rotation,
+            'facing': facing,
             'url': url,
-            'meaningful': mname,
-            'armor_stand': ars,
+            'meaningful': meaningful,
+            'armor_stand': armor_stand,
         }
 
-    def dls(self, url: str, name: str) -> bool:
+    def downloading(self, url: str, name: str) -> bool:
         img_path = self.img_dir / f'{name}.png'
         if argp().nodl or not url or img_path.is_file():
             print('跳过下载...', end='', flush=True)
-            if url and img_path.is_file() and self.rect(img_path):
+            if url and img_path.is_file() and self.padding(img_path):
                 print('成功！', flush=True)
             else:
                 print()
@@ -95,8 +99,8 @@ class Get:
         print('开始下载...', end='', flush=True)
         for i in range(3):
             try:
-                img = get(url, timeout=(6.05, 10))
-                img.raise_for_status()
+                response = get(url, timeout=(6.05, 10))
+                response.raise_for_status()
                 break
             except exceptions.ConnectionError:
                 print(f'连接错误（{i + 1}/3）...', end='', flush=True)
@@ -114,14 +118,14 @@ class Get:
             print()
             lg.error('已超时。', extra={'pos': f'L{self.ln} - {name}'})
             return False
-        with open(img_path, 'wb') as png:
-            png.write(img.content)
-        self.rect(img_path)
+        with open(img_path, 'wb') as f:
+            f.write(response.content)
+        self.padding(img_path)
         print('成功！', flush=True)
         return True
 
     @staticmethod
-    def rect(img_path) -> bool:
+    def padding(img_path) -> bool:
         temp_path = img_path.with_name(img_path.name + '.tmp')
         with Image.open(img_path) as img:
             if img.size != (64, 32):
@@ -130,11 +134,11 @@ class Get:
             img = img.convert('RGBA')
             if 'thegreatergod' in str(img_path):
                 print('thelesserdog...', end='', flush=True)
-                pix = img.load()
+                pixel = img.load()
                 for w in range(31, 64):
                     for h in range(16):
-                        if pix[w, h] == (255, 255, 255, 255):
-                            pix[w, h] = (0, 0, 0, 0)
+                        if pixel[w, h] == (255, 255, 255, 255):
+                            pixel[w, h] = (0, 0, 0, 0)
             new_img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
             new_img.paste(img, (0, 0), img)
             new_img.save(temp_path, format='PNG')
@@ -145,7 +149,7 @@ class Get:
         if not dt2:
             return dt1
         name, url = dt2['id'], dt2['url']
-        self.dls(url, name)
+        self.downloading(url, name)
         if dt1.get(stem):
             dt3 = {i['location']: i['id'] for i in dt1[stem]}
             if not (idn := dt3.get(dt2['location'])):
@@ -172,7 +176,7 @@ class Get:
                 extra={'pos': f'L{self.ln} - {old}'},
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
-            self.dls(url, name)
+            self.downloading(url, name)
         if url:
             self.n_lt[name] = (url, dt2['meaningful'])
         return dt1
@@ -217,7 +221,7 @@ class Get:
                 continue
             try:
                 print(f'L{self.ln}', end=' - ', flush=True)
-                dt_pending = self.ext(j)
+                dt_pending = self.extract(j)
                 dt = self.merge(dt, dt_pending, stem)
             except Exception:
                 print()
@@ -391,7 +395,9 @@ class Identify:
                 for i, j in enumerate(data):
                     self.pro(j, str(i + 1).zfill(3))
                 lt = [[i['old'], i['new']] for i in self.dt]
-                with open('output/name.csv', 'w', encoding='utf-8-sig', newline='') as f:
+                with open(
+                    'output/name.csv', 'w', encoding='utf-8-sig', newline=''
+                ) as f:
                     writing = writer(f)
                     writing.writerows(lt)
             else:
