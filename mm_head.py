@@ -14,6 +14,7 @@ from logging import (
 from pathlib import Path
 from re import search, sub
 from time import sleep
+from typing import Final
 
 from deepdiff import DeepDiff
 from PIL import Image
@@ -21,28 +22,37 @@ from requests import exceptions, get
 
 
 class Get:
-    POS = 'GET'
+    POS: Final[str] = 'GET'
 
     @staticmethod
-    def get_name(data: str) -> tuple:
+    def search_group(pattern: str, data: str) -> str:
+        result = search(pattern, data)
+        if not result:
+            logger.error('不能从 %s 中获得 "%s"！', data, pattern, extra={'pos': 'GET'})
+            raise AssertionError
+        return result.group(1)
+
+    @staticmethod
+    def get_name(data: str) -> tuple[str | None, str | None, bool]:
         name, url, meaningful = None, None, True
         trans = str.maketrans(' -', '__', '().#')
         if 'value:' in data:
-            b64_raw = search(r'value: ?"([^\"]+)"', data).group(1)
+            b64_raw = Get.search_group(r'value: ?"([^\"]+)"', data)
             b64_raw += '=' * (-len(b64_raw) % 4)
             b64_decoded = b64d(b64_raw).decode()
-            url = loads(b64_decoded)['textures']['SKIN']['url'].replace(
+            url: str = loads(b64_decoded)['textures']['SKIN']['url'].replace(
                 'http:', 'https:'
             )
             name = search(r'(?:name|text): ?"([^"]*)"', data)
             if 'minecraft:custom_name' in data and 'text:' not in data:
                 name = search(r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data)
-            name = name.group(1).translate(trans).lower()
             if not name or name == 'textures':
                 name = url[url.rfind('/') + 1 : url.rfind('/') + 7]
                 meaningful = False
+            else:
+                name = name.group(1).translate(trans).lower()
         elif 'head:' in data:
-            name = search(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data).group(1)
+            name = Get.search_group(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data)
             name = name.translate(trans).lower()
         else:
             meaningful = False
@@ -50,28 +60,28 @@ class Get:
             name += f'_{url[url.rfind("/") + 1 : url.rfind("/") + 3]}'
         return name, url, meaningful
 
-    def extract(self, data: str) -> dict:
+    def extract(self, data: str) -> dict[str, str | int | bool | None]:
         facing, rotation = None, None
         armor_stand = 'armor_stand' in data
-        location = search(r' ([\d\-. ]+) ', data).group(1)
+        location = Get.search_group(r' ([\d\-. ]+) ', data)
         if '.' in location:
             location = [int(float(i)) for i in location.split(' ')]
             location[1] += 1
             location = ' '.join(map(str, location))
         if 'rotation' in data:
-            rotation = int(search(r'rotation=(\d+)', data).group(1))
+            rotation = int(Get.search_group(r'rotation=(\d+)', data))
         elif 'Rotation' in data:
             rotation_map = [180]
             rotation_map.extend(int(-157.5 + i * 22.5) for i in range(15))
-            rotation_raw = search(r'Rotation: ?\[([\d\-.]+)f', data).group(1)
+            rotation_raw = Get.search_group(r'Rotation: ?\[([\d\-.]+)f', data)
             rotation_raw = '180.0' if rotation_raw == '-180.0' else rotation_raw
             rotation_closest = min(
                 rotation_map, key=lambda x: abs(int(float(rotation_raw)) - x)
             )
             rotation = rotation_map.index(rotation_closest)
         elif 'facing' in data:
-            facing = search(r'facing=([^,\]]+)', data).group(1)
-        name, url, meaningful = self.get_name(data)
+            facing = Get.search_group(r'facing=([^,\]]+)', data)
+        name, url, meaningful = Get.get_name(data)
         if not (name or url or meaningful):
             print()
             logger.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
@@ -91,7 +101,7 @@ class Get:
         img_path = self.img_dir / f'{name}.png'
         if argp().nodl or not url or img_path.is_file():
             print('跳过下载...', end='', flush=True)
-            if url and img_path.is_file() and self.padding(img_path):
+            if url and img_path.is_file() and Get.padding(img_path):
                 print('成功！', flush=True)
             else:
                 print()
@@ -106,6 +116,7 @@ class Get:
                 print(f'连接错误（{i + 1}/3）...', end='', flush=True)
                 sleep(1)
             except exceptions.HTTPError as e:
+                assert e.response is not None
                 print(
                     f'状态码 {e.response.status_code}（{i + 1}/3）...',
                     end='',
@@ -119,13 +130,13 @@ class Get:
             logger.error('已超时。', extra={'pos': f'L{self.ln} - {name}'})
             return False
         with open(img_path, 'wb') as f:
-            f.write(response.content)
-        self.padding(img_path)
+            _ = f.write(response.content)
+        _ = Get.padding(img_path)
         print('成功！', flush=True)
         return True
 
     @staticmethod
-    def padding(img_path) -> bool:
+    def padding(img_path: Path) -> bool:
         temp_path = img_path.with_name(img_path.name + '.tmp')
         with Image.open(img_path) as img:
             if img.size != (64, 32):
@@ -135,6 +146,7 @@ class Get:
             if 'thegreatergod' in str(img_path):
                 print('thelesserdog...', end='', flush=True)
                 pixel = img.load()
+                assert pixel is not None
                 for w in range(31, 64):
                     for h in range(16):
                         if pixel[w, h] == (255, 255, 255, 255):
@@ -142,7 +154,7 @@ class Get:
             new_img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
             new_img.paste(img, (0, 0), img)
             new_img.save(temp_path, format='PNG')
-        temp_path.replace(img_path)
+        _ = temp_path.replace(img_path)
         return True
 
     def merge(self, dt1: dict, dt2: dict, stem: str) -> dict:
@@ -281,7 +293,7 @@ class Get:
             with open(f, 'r', encoding='utf-8') as rd:
                 data = rd.read().splitlines()
             logger.warning('%s - L%s', stem, len(data), extra={'pos': self.POS})
-            dtn, url = self.prune(self.pro(stem, data))
+            dtn, url = Get.prune(self.pro(stem, data))
             dt |= dtn
             if url:
                 urls.extend(url)
@@ -290,7 +302,7 @@ class Get:
                 '未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS}
             )
             data = [input('输入待处理项：')]
-            dt, url = self.prune(self.pro('info', data))
+            dt, url = Get.prune(self.pro('info', data))
             if url:
                 urls.extend(url)
         self.out(dt, urls)
@@ -298,7 +310,7 @@ class Get:
 
 
 class Identify:
-    POS = 'IDT'
+    POS: Final[str] = 'IDT'
 
     @staticmethod
     def ext(url: str, msg: str) -> str:
@@ -331,11 +343,12 @@ class Identify:
         if 'No Heads available' in data:
             return ''
         con = data[data.find('descending') : data.find('Search Tips')]
-        return search(r'a href=.+title="([^"]+)"', con).group(1)
+        return Get.search_group(r'a href=.+title="([^"]+)"', con)
 
-    def cache(self) -> dict:
+    @staticmethod
+    def cache() -> dict:
         if argp().nocache:
-            logger.info('缓存已忽略！', extra={'pos': self.POS})
+            logger.info('缓存已忽略！', extra={'pos': 'IDT'})
             return {}
         if not Path('output/cache.json').is_file():
             return {}
@@ -343,7 +356,7 @@ class Identify:
             data = load(rd)
             data_popped = [i for i, j in data.items() if not j]
             _ = [data.pop(i) for i in data_popped]
-            logger.info('缓存已加载！', extra={'pos': self.POS})
+            logger.info('缓存已加载！', extra={'pos': 'IDT'})
             return data
 
     @staticmethod
@@ -361,11 +374,11 @@ class Identify:
             j = k
             print('（缓存）', end='', flush=True)
         else:
-            j = self.ext(n, msg)
+            j = Identify.ext(n, msg)
             if j:
                 self.c_lt[m] = j
         if j:
-            j = self.stripping(j, n[4:6])
+            j = Identify.stripping(j, n[4:6])
             print(j, flush=True)
             if l := self.n_lt.get(j):
                 self.dup[j] = self.dup.get(j, 0) + 1
@@ -382,7 +395,7 @@ class Identify:
         self.dt.append({'old': m, 'new': j})
 
     def __init__(self) -> None:
-        self.c_lt = self.cache()
+        self.c_lt = Identify.cache()
         self.dt = []
         self.dup = {}
         self.n_lt = {}
@@ -410,7 +423,7 @@ class Identify:
                 with open(
                     'output/name.csv', 'w', encoding='utf-8-sig', newline=''
                 ) as f:
-                    lt = [(i, self.stripping(j, i[0:2])) for i, j in self.c_lt.items()]
+                    lt = [(i, Identify.stripping(j, i[0:2])) for i, j in self.c_lt.items()]
                     writing = writer(f)
                     writing.writerows(lt)
         finally:
@@ -420,7 +433,7 @@ class Identify:
 
 
 class Import:
-    POS = 'IMP'
+    POS: Final[str] = 'IMP'
 
     @staticmethod
     def blotem(idn: str, templ: str) -> bool:
@@ -515,19 +528,19 @@ class Import:
         stems = tuple(
             (i, (i[: i.rfind('_')] if '_' in {i[-3], i[-2]} else i)) for i in stems
         )
-        self.terlang(stems)
+        Import.terlang(stems)
         if argp().nobp:
             logger.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
         else:
             for i, _ in stems:
-                if not self.blotem(i, block_tem) and block_info:
+                if not Import.blotem(i, block_tem) and block_info:
                     logger.error(
                         '未找到模板 %s，跳过 block 生成！',
                         block_tem,
                         extra={'pos': self.POS},
                     )
                     block_info = False
-                if not self.blotem(i, item_tem) and item_info:
+                if not Import.blotem(i, item_tem) and item_info:
                     logger.error(
                         '未找到模板 %s，跳过 item 生成！',
                         item_tem,
@@ -548,7 +561,7 @@ class Import:
 
 
 class Rename:
-    def reading(self, path) -> dict:
+    def reading(self, path: Path) -> dict[str, tuple[str, str]]:
         with open(path, 'r', encoding='utf-8-sig') as f:
             reading = reader(f)
             names = {
@@ -562,10 +575,10 @@ class Rename:
         names.pop('Column2', None)
         return names
 
-    def read_names(self) -> dict:
+    def read_names(self) -> dict[str, tuple[str, str]]:
         playerheads_csv = Path('templates/playerheads.csv')
         name_csv = Path('output/name.csv')
-        name_list = {}
+        name_list: dict[str, tuple[str, str]] = {}
         if name_csv.is_file():
             name_list.update(self.reading(name_csv))
             logger.info('工作在 name 模式下。', extra={'pos': self.pos})
@@ -589,7 +602,7 @@ class Rename:
         return info_data.replace(f'"{old_stem}"', f'"{new_stem}"')
 
     def __init__(self, revert_mode: bool = False) -> None:
-        self.pos = 'REVERT' if revert_mode else 'RENAME'
+        self.pos: Final[str] = 'REVERT' if revert_mode else 'RENAME'
         self.revert_mode = revert_mode
         self.img_dir = Path('output/RP/textures/entity')
         info_json = Path('output/info.json')
@@ -642,7 +655,7 @@ class Rename:
 
 
 def diff() -> None:
-    pos = 'DIFF'
+    pos: Final[str] = 'DIFF'
     file_source, file_dest = map(Path, argp().files)
     if not file_source.is_file():
         logger.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
@@ -674,7 +687,7 @@ def diff() -> None:
 
 
 def sorting() -> None:
-    pos = 'SORT'
+    pos: Final[str] = 'SORT'
     file = Path(argp().file)
     if not file.is_file():
         logger.error('文件不存在！', extra={'pos': pos})
@@ -731,18 +744,20 @@ if __name__ == '__main__':
     try:
         match argp().cmd:
             case 'get':
-                Get()
+                _ = Get()
             case 'idt':
-                Identify()
+                _ = Identify()
             case 'imp':
-                Import()
+                _ = Import()
             case 'revert':
-                Rename(True)
+                _ = Rename(True)
             case 'diff':
                 diff()
             case 'sort':
                 sorting()
         print()
+    except AssertionError:
+        pass
     except Exception:
         logger.exception('未知错误。', extra={'pos': __name__})
     finally:
