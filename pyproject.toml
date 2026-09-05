@@ -21,3 +21,6 @@ disable = ["missing-module-docstring", "missing-class-docstring", "missing-funct
 
 [tool.ruff.format]
 quote-style = "single"
+
+[tool.ruff.lint]
+extend-select = ["W", "PL"]

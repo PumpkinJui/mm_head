@@ -14,11 +14,24 @@ from logging import (
 from pathlib import Path
 from re import search, sub
 from time import sleep
-from typing import Final
+from typing import Final, TypedDict
 
 from deepdiff import DeepDiff
 from PIL import Image
 from requests import exceptions, get
+
+
+class ExtractedDictInfo(TypedDict):
+    id: str
+    location: str
+    rotation: int | None
+    facing: str | None
+    url: str
+    meaningful: bool
+    armor_stand: bool
+
+
+type DataDictInfo = dict[str, list[ExtractedDictInfo]]
 
 
 class Get:
@@ -33,24 +46,28 @@ class Get:
         return result.group(1)
 
     @staticmethod
-    def get_name(data: str) -> tuple[str | None, str | None, bool]:
-        name, url, meaningful = None, None, True
+    def get_name(data: str) -> tuple[str, str, bool]:
+        name: str = ''
+        url: str = ''
+        meaningful: bool = True
         trans = str.maketrans(' -', '__', '().#')
         if 'value:' in data:
             b64_raw = Get.search_group(r'value: ?"([^\"]+)"', data)
             b64_raw += '=' * (-len(b64_raw) % 4)
             b64_decoded = b64d(b64_raw).decode()
-            url: str = loads(b64_decoded)['textures']['SKIN']['url'].replace(
+            url = loads(b64_decoded)['textures']['SKIN']['url'].replace(
                 'http:', 'https:'
             )
-            name = search(r'(?:name|text): ?"([^"]*)"', data)
+            name_raw = search(r'(?:name|text): ?"([^"]*)"', data)
             if 'minecraft:custom_name' in data and 'text:' not in data:
-                name = search(r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data)
-            if not name or name == 'textures':
+                name_raw = search(
+                    r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data
+                )
+            if not name_raw or name_raw.group(1) == 'textures':
                 name = url[url.rfind('/') + 1 : url.rfind('/') + 7]
                 meaningful = False
             else:
-                name = name.group(1).translate(trans).lower()
+                name = name_raw.group(1).translate(trans).lower()
         elif 'head:' in data:
             name = Get.search_group(r'head: ?\{[^}]*id: ?"([^"]+)"\}', data)
             name = name.translate(trans).lower()
@@ -60,7 +77,7 @@ class Get:
             name += f'_{url[url.rfind("/") + 1 : url.rfind("/") + 3]}'
         return name, url, meaningful
 
-    def extract(self, data: str) -> dict[str, str | int | bool | None]:
+    def extract(self, data: str) -> ExtractedDictInfo | None:
         facing, rotation = None, None
         armor_stand = 'armor_stand' in data
         location = Get.search_group(r' ([\d\-. ]+) ', data)
@@ -85,7 +102,7 @@ class Get:
         if not (name or url or meaningful):
             print()
             logger.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
-            return {}
+            return None
         print(name, end=' - ', flush=True)
         return {
             'id': name,
@@ -138,11 +155,11 @@ class Get:
     @staticmethod
     def padding(img_path: Path) -> bool:
         temp_path = img_path.with_name(img_path.name + '.tmp')
-        with Image.open(img_path) as img:
-            if img.size != (64, 32):
+        with Image.open(img_path) as f:
+            if f.size != (64, 32):
                 return False
             print('转换中...', end='', flush=True)
-            img = img.convert('RGBA')
+            img = f.convert('RGBA')
             if 'thegreatergod' in str(img_path):
                 print('thelesserdog...', end='', flush=True)
                 pixel = img.load()
@@ -157,70 +174,73 @@ class Get:
         _ = temp_path.replace(img_path)
         return True
 
-    def merge(self, dt1: dict, dt2: dict, stem: str) -> dict:
-        if not dt2:
-            return dt1
-        name, url = dt2['id'], dt2['url']
-        self.downloading(url, name)
-        if dt1.get(stem):
-            dt3 = {i['location']: i['id'] for i in dt1[stem]}
-            if not (idn := dt3.get(dt2['location'])):
-                dt1[stem].append(dt2)
+    def merge(
+        self,
+        dict_general: DataDictInfo,
+        dict_unique: ExtractedDictInfo | None,
+        stem: str,
+    ) -> DataDictInfo:
+        if not dict_unique:
+            return dict_general
+        name, url = dict_unique['id'], dict_unique['url']
+        _ = self.downloading(url, name)
+        if dict_general.get(stem):
+            location2id = {i['location']: i['id'] for i in dict_general[stem]}
+            if not (id_tocheck := location2id.get(dict_unique['location'])):
+                dict_general[stem].append(dict_unique)
             else:
                 logger.warning(
                     '位置 %s 已存在头颅 %s。',
-                    dt2['location'],
-                    idn,
+                    dict_unique['location'],
+                    id_tocheck,
                     extra={'pos': f'L{self.ln} - {name}'},
                 )
         else:
-            dt1[stem] = [dt2]
+            dict_general[stem] = [dict_unique]
         if self.n_lt.get(name, [url])[0] != url:
             old = name
             i = 0
             while self.n_lt.get(name, [url])[0] != url:
                 i += 1
                 name = f'{name}_{i}' if i == 1 else f'{name[: name.rfind("_")]}_{i}'
-            dt2['id'] = name
+            dict_unique['id'] = name
             logger.warning(
                 '对应多重 URL，已将新的更名为 %s。',
                 name,
                 extra={'pos': f'L{self.ln} - {old}'},
             )
             print(f'L{self.ln} - {name} - ', end='', flush=True)
-            self.downloading(url, name)
+            _ = self.downloading(url, name)
         if url:
-            self.n_lt[name] = (url, dt2['meaningful'])
-        return dt1
+            self.n_lt[name] = (url, dict_unique['meaningful'])
+        return dict_general
 
     @staticmethod
-    def prune(dt: dict) -> tuple:
-        dtn = {}
-        url = []
-        for i, j in dt.items():
-            dtn[i] = []
+    def prune(dict_pre: DataDictInfo) -> tuple[DataDictInfo, list[dict[str, str]]]:
+        dict_post: DataDictInfo = {}
+        url2id: list[dict[str, str]] = []
+        for stem, data in dict_pre.items():
+            dict_post[stem] = []
             if not argp().nourl:
-                url = [
+                url2id = [
                     {
                         f'url:{
-                            k["url"].replace(
+                            entry["url"].replace(
                                 "https://textures.minecraft.net/texture/", ""
                             )
-                        }': k['id']
+                        }': entry['id']
                     }
-                    for k in j
-                    if k['url']
+                    for entry in data
+                    if entry['url']
                 ]
-            for k in j:
-                k.pop('url')
-                k.pop('meaningful')
+            for entry in data:
+                popped = {'url', 'meaningful'}
                 if not argp().armorstand:
-                    k.pop('armor_stand')
-                l = [m for m, n in k.items() if not n and n != 0]
-                for m in l:
-                    k.pop(m)
-                dtn[i].append(k)
-        return dtn, url
+                    popped.add('armor_stand')
+                popped.update(m for m, n in entry.items() if not n and n != 0)
+                _ = [entry.pop(item) for item in popped]
+                dict_post[stem].append(entry)
+        return dict_post, url2id
 
     def pro(self, stem: str, data: list) -> dict:
         dt = {}
@@ -329,6 +349,7 @@ class Identify:
                 sleep(1)
             except exceptions.HTTPError as e:
                 data = e.response
+                assert data is not None
                 if 'Just a moment' in data.text:
                     raise PermissionError from e
                 print(f'状态码 {data.status_code}（{i + 1}/3）...', end='', flush=True)
@@ -423,7 +444,9 @@ class Identify:
                 with open(
                     'output/name.csv', 'w', encoding='utf-8-sig', newline=''
                 ) as f:
-                    lt = [(i, Identify.stripping(j, i[0:2])) for i, j in self.c_lt.items()]
+                    lt = [
+                        (i, Identify.stripping(j, i[0:2])) for i, j in self.c_lt.items()
+                    ]
                     writing = writer(f)
                     writing.writerows(lt)
         finally:
