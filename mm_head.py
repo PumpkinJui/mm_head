@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from base64 import urlsafe_b64decode as b64d
 from csv import reader, writer
 from json import dump, dumps, load, loads
@@ -14,7 +14,7 @@ from logging import (
 from pathlib import Path
 from re import search, sub
 from time import sleep
-from typing import Final, TypedDict
+from typing import Final, TypedDict, cast
 
 from deepdiff import DeepDiff
 from PIL import Image
@@ -101,7 +101,7 @@ class Get:
         name, url, meaningful = Get.get_name(data)
         if not (name or url or meaningful):
             print()
-            logger.warning('无头颅数据。', extra={'pos': f'L{self.ln}'})
+            logger.warning('无头颅数据。', extra={'pos': f'L{self.linum}'})
             return None
         print(name, end=' - ', flush=True)
         return {
@@ -116,7 +116,7 @@ class Get:
 
     def downloading(self, url: str, name: str) -> bool:
         img_path = self.img_dir / f'{name}.png'
-        if argp().nodl or not url or img_path.is_file():
+        if arg_parser().nodl or not url or img_path.is_file():
             print('跳过下载...', end='', flush=True)
             if url and img_path.is_file() and Get.padding(img_path):
                 print('成功！', flush=True)
@@ -144,7 +144,7 @@ class Get:
                 sleep(1)
         else:
             print()
-            logger.error('已超时。', extra={'pos': f'L{self.ln} - {name}'})
+            logger.error('已超时。', extra={'pos': f'L{self.linum} - {name}'})
             return False
         with open(img_path, 'wb') as f:
             _ = f.write(response.content)
@@ -193,139 +193,151 @@ class Get:
                     '位置 %s 已存在头颅 %s。',
                     dict_unique['location'],
                     id_tocheck,
-                    extra={'pos': f'L{self.ln} - {name}'},
+                    extra={'pos': f'L{self.linum} - {name}'},
                 )
         else:
             dict_general[stem] = [dict_unique]
-        if self.n_lt.get(name, [url])[0] != url:
+        if self.id2url.get(name, [url])[0] != url:
             old = name
             i = 0
-            while self.n_lt.get(name, [url])[0] != url:
+            while self.id2url.get(name, [url])[0] != url:
                 i += 1
                 name = f'{name}_{i}' if i == 1 else f'{name[: name.rfind("_")]}_{i}'
             dict_unique['id'] = name
             logger.warning(
                 '对应多重 URL，已将新的更名为 %s。',
                 name,
-                extra={'pos': f'L{self.ln} - {old}'},
+                extra={'pos': f'L{self.linum} - {old}'},
             )
-            print(f'L{self.ln} - {name} - ', end='', flush=True)
+            print(f'L{self.linum} - {name} - ', end='', flush=True)
             _ = self.downloading(url, name)
         if url:
-            self.n_lt[name] = (url, dict_unique['meaningful'])
+            self.id2url[name] = (url, dict_unique['meaningful'])
         return dict_general
 
     @staticmethod
-    def prune(dict_pre: DataDictInfo) -> tuple[DataDictInfo, list[dict[str, str]]]:
+    def prune(dict_past: DataDictInfo) -> tuple[DataDictInfo, list[dict[str, str]]]:
         dict_post: DataDictInfo = {}
         url2id: list[dict[str, str]] = []
-        for stem, data in dict_pre.items():
-            dict_post[stem] = []
-            if not argp().nourl:
-                url2id = [
-                    {
-                        f'url:{
-                            entry["url"].replace(
-                                "https://textures.minecraft.net/texture/", ""
-                            )
-                        }': entry['id']
-                    }
-                    for entry in data
-                    if entry['url']
-                ]
-            for entry in data:
-                popped = {'url', 'meaningful'}
-                if not argp().armorstand:
-                    popped.add('armor_stand')
-                popped.update(m for m, n in entry.items() if not n and n != 0)
-                _ = [entry.pop(item) for item in popped]
-                dict_post[stem].append(entry)
+        stem, data = next(iter(dict_past.items()))
+        dict_post[stem] = []
+        if not arg_parser().nourl:
+            url2id = [
+                {
+                    f'url:{
+                        entry["url"].replace(
+                            "https://textures.minecraft.net/texture/", ""
+                        )
+                    }': entry['id']
+                }
+                for entry in data
+                if entry['url']
+            ]
+        for entry in data:
+            popped = {'url', 'meaningful'}
+            if not arg_parser().armorstand:
+                popped.add('armor_stand')
+            popped.update(m for m, n in entry.items() if not n and n != 0)
+            _ = [
+                cast(dict[str, object], cast(object, entry)).pop(item)
+                for item in popped
+            ]
+            dict_post[stem].append(entry)
         return dict_post, url2id
 
-    def pro(self, stem: str, data: list) -> dict:
-        dt = {}
-        for i, j in enumerate(data):
-            self.ln = str(i + 1).zfill(3)
-            if not j.strip():
+    def process(self, stem: str, data: list[str]) -> DataDictInfo:
+        dict_general = {}
+        for index, entry in enumerate(data):
+            self.linum = str(index + 1).zfill(3)
+            if not entry.strip():
                 continue
-            if not argp().armorstand and 'armor_stand' in j:
-                logger.info('盔甲架输出已关闭。', extra={'pos': f'L{self.ln}'})
+            if not arg_parser().armorstand and 'armor_stand' in entry:
+                logger.info('盔甲架输出已关闭。', extra={'pos': f'L{self.linum}'})
                 continue
             try:
-                print(f'L{self.ln}', end=' - ', flush=True)
-                dt_pending = self.extract(j)
-                dt = self.merge(dt, dt_pending, stem)
+                print(f'L{self.linum}', end=' - ', flush=True)
+                dict_unique = self.extract(entry)
+                dict_general = self.merge(dict_general, dict_unique, stem)
             except Exception:
                 print()
-                logger.exception('未知错误。', extra={'pos': f'L{self.ln}'})
+                logger.exception('未知错误。', extra={'pos': f'L{self.linum}'})
         print()
-        return dt
+        return dict_general
 
-    def out(self, dt: dict, urls: list) -> None:
-        data = dumps(dt, indent=4)
-        dup = {}
-        u_lt = tuple((i, j, k) for i, (j, k) in self.n_lt.items())
-        names = {}
-        for name, url, mname in u_lt:
-            if mname:
-                names[url] = name
-        for name, url, mname in u_lt:
-            if (nurl := names.get(url)) and name != nurl:
-                dup[name] = nurl
-                data = data.replace(f'"{name}"', f'"{nurl}"')
+    def info_writer(self, info: DataDictInfo) -> dict[str, str]:
+        data = dumps(info, indent=4)
+        duplicate: dict[str, str] = {}
+        id_url = tuple(
+            (name, url, meaningful) for name, (url, meaningful) in self.id2url.items()
+        )
+        url2canonical: dict[str, str] = {}
+        for name, url, meaningful in id_url:
+            if meaningful:
+                url2canonical[url] = name
+        for name, url, meaningful in id_url:
+            if (canonical_id := url2canonical.get(url)) and name != canonical_id:
+                duplicate[name] = canonical_id
+                data = data.replace(f'"{name}"', f'"{canonical_id}"')
                 logger.warning(
-                    'URL 对应多重名称，已统一为 %s。', nurl, extra={'pos': f'{name}'}
+                    'URL 对应多重名称，已统一为 %s。',
+                    canonical_id,
+                    extra={'pos': f'{name}'},
                 )
-                if (old := self.img_dir / f'{name}.png').is_file():
-                    old.replace(self.img_dir / f'{nurl}.png')
+                if (duplicate_file := self.img_dir / f'{name}.png').is_file():
+                    _ = duplicate_file.replace(self.img_dir / f'{canonical_id}.png')
                 else:
                     logger.warning('该文件不存在，已跳过。', extra={'pos': f'{name}'})
-        with open('output/info.json', 'w', encoding='utf-8') as wt:
-            wt.write(data)
-        if not argp().nourl:
-            past = set()
-            urln = []
-            for i in urls:
-                m, n = next(iter(i.items()))
-                if n in dup:
-                    i[m] = dup[n]
-                j = tuple(sorted(i.items()))
-                if j not in past:
-                    past.add(j)
-                    urln.append(i)
-            with open('output/url.json', 'w', encoding='utf-8') as wt:
-                dump(urln, wt, indent=4)
+        with open('output/info.json', 'w', encoding='utf-8') as f:
+            _ = f.write(data)
+        return duplicate
+
+    def url_writer(self, url2id: list[dict[str, str]], duplicate: dict[str, str]) -> None:
+        if not arg_parser().nourl:
+            seen: set[tuple[tuple[str, str], ...]] = set()
+            towrite: list[dict[str, str]] = []
+            for entry in url2id:
+                url, name = next(iter(entry.items()))
+                if name in duplicate:
+                    entry[url] = duplicate[name]
+                url_sorted = tuple(sorted(entry.items()))
+                if url_sorted not in seen:
+                    seen.add(url_sorted)
+                    towrite.append(entry)
+            with open('output/url.json', 'w', encoding='utf-8') as f:
+                dump(towrite, f, indent=4)
 
     def __init__(self) -> None:
-        self.n_lt = {}
-        self.img_dir = Path('output/RP/textures/entity')
-        dt = {}
+        self.id2url: dict[str, tuple[str, bool]] = {}
+        self.img_dir: Final[Path] = Path('output/RP/textures/entity')
+        self.linum: str = ''
+        info_global: DataDictInfo = {}
         f = None
-        urls = []
-        if argp().nodl:
+        url2id_global: list[dict[str, str]] = []
+        if arg_parser().nodl:
             logger.info('跳过下载已开启。', extra={'pos': self.POS})
         else:
             self.img_dir.mkdir(parents=True, exist_ok=True)
-        if argp().nourl:
+        if arg_parser().nourl:
             logger.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
         for f in Path('raw').glob('*.txt'):
             stem = f.stem
             with open(f, 'r', encoding='utf-8') as rd:
                 data = rd.read().splitlines()
             logger.warning('%s - L%s', stem, len(data), extra={'pos': self.POS})
-            dtn, url = Get.prune(self.pro(stem, data))
-            dt |= dtn
-            if url:
-                urls.extend(url)
+            info_entry, url2id_entry = Get.prune(self.process(stem, data))
+            info_global |= info_entry
+            if url2id_entry:
+                url2id_global.extend(url2id_entry)
         if not f:
             logger.warning(
                 '未在 raw 目录内找到 txt 后缀的批处理文件。', extra={'pos': self.POS}
             )
             data = [input('输入待处理项：')]
-            dt, url = Get.prune(self.pro('info', data))
-            if url:
-                urls.extend(url)
-        self.out(dt, urls)
+            info_global, url2id_entry = Get.prune(self.process('info', data))
+            if url2id_entry:
+                url2id_global.extend(url2id_entry)
+        duplicate = self.info_writer(info_global)
+        self.url_writer(url2id_global, duplicate)
         logger.info('信息提取完成！', extra={'pos': self.POS})
 
 
@@ -368,7 +380,7 @@ class Identify:
 
     @staticmethod
     def cache() -> dict:
-        if argp().nocache:
+        if arg_parser().nocache:
             logger.info('缓存已忽略！', extra={'pos': 'IDT'})
             return {}
         if not Path('output/cache.json').is_file():
@@ -387,9 +399,9 @@ class Identify:
         name += '_' + identifier
         return name
 
-    def pro(self, data: dict, ln: str) -> None:
+    def pro(self, data: dict, linum: str) -> None:
         n, m = next(iter(data.items()))
-        msg = f'L{ln} - {m}'
+        msg = f'L{linum} - {m}'
         print(msg, end=' - ', flush=True)
         if (k := self.c_lt.get(m)) or k == '':
             j = k
@@ -552,7 +564,7 @@ class Import:
             (i, (i[: i.rfind('_')] if '_' in {i[-3], i[-2]} else i)) for i in stems
         )
         Import.terlang(stems)
-        if argp().nobp:
+        if arg_parser().nobp:
             logger.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
         else:
             for i, _ in stems:
@@ -576,10 +588,10 @@ class Import:
     def writing(path: str, content: str) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, 'w', encoding='utf-8') as f:
-            f.write(content)
+            _ = f.write(content)
 
     def __init__(self) -> None:
-        Rename()
+        _ = Rename()
         self.gen()
 
 
@@ -594,8 +606,8 @@ class Rename:
                 )
                 for i in reading
             }
-        names.pop('Column1', None)
-        names.pop('Column2', None)
+        _ = names.pop('Column1', None)
+        _ = names.pop('Column2', None)
         return names
 
     def read_names(self) -> dict[str, tuple[str, str]]:
@@ -619,15 +631,15 @@ class Rename:
                 '新文件 %s 存在，已覆盖。', new_stem, extra={'pos': old_stem}
             )
         if old_path.is_file():
-            old_path.replace(new_path)
+            _ = old_path.replace(new_path)
         else:
             logger.warning('该文件不存在，已跳过。', extra={'pos': old_stem})
         return info_data.replace(f'"{old_stem}"', f'"{new_stem}"')
 
     def __init__(self, revert_mode: bool = False) -> None:
         self.pos: Final[str] = 'REVERT' if revert_mode else 'RENAME'
-        self.revert_mode = revert_mode
-        self.img_dir = Path('output/RP/textures/entity')
+        self.revert_mode: Final[bool] = revert_mode
+        self.img_dir: Final[Path] = Path('output/RP/textures/entity')
         info_json = Path('output/info.json')
         playerheads_csv = Path('templates/playerheads.csv')
         if not (names := self.read_names()):
@@ -640,7 +652,7 @@ class Rename:
             logger.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
             info_data = ''
         stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
-        all_new_stems = (
+        all_new_stems: set[str] = (
             {new_stem for new_stem, _ in self.reading(playerheads_csv).values()}
             if playerheads_csv.is_file()
             else set()
@@ -673,13 +685,13 @@ class Rename:
             logger.warning('未使用的条目：%s。', unused, extra={'pos': self.pos})
         if info_json.is_file():
             with open(info_json, 'w', encoding='utf-8') as f:
-                f.write(info_data)
+                _ = f.write(info_data)
         logger.info('重命名完成！', extra={'pos': self.pos})
 
 
 def diff() -> None:
     pos: Final[str] = 'DIFF'
-    file_source, file_dest = map(Path, argp().files)
+    file_source, file_dest = map(Path, arg_parser().files)
     if not file_source.is_file():
         logger.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
         return
@@ -711,7 +723,7 @@ def diff() -> None:
 
 def sorting() -> None:
     pos: Final[str] = 'SORT'
-    file = Path(argp().file)
+    file = Path(arg_parser().file)
     if not file.is_file():
         logger.error('文件不存在！', extra={'pos': pos})
         return
@@ -727,26 +739,28 @@ def sorting() -> None:
     logger.info('排序完成！', extra={'pos': pos})
 
 
-def argp():
+def arg_parser() -> Namespace:
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
     subpar = par.add_subparsers(dest='cmd')
     p_get = subpar.add_parser('get', help='提取头颅信息')
-    p_get.add_argument('-a', '--armorstand', action='store_true', help='输出盔甲架数据')
-    p_get.add_argument('-l', '--nodl', action='store_true', help='跳过皮肤文件下载')
-    p_get.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
+    _ = p_get.add_argument(
+        '-a', '--armorstand', action='store_true', help='输出盔甲架数据'
+    )
+    _ = p_get.add_argument('-l', '--nodl', action='store_true', help='跳过皮肤文件下载')
+    _ = p_get.add_argument('-u', '--nourl', action='store_true', help='跳过 URL 记录')
     p_idt = subpar.add_parser('idt', help='获取 ID 对应的名称')
-    p_idt.add_argument('-e', '--nocache', action='store_true', help='忽略缓存')
+    _ = p_idt.add_argument('-e', '--nocache', action='store_true', help='忽略缓存')
     p_imp = subpar.add_parser('imp', help='生成导入数据')
-    p_imp.add_argument(
+    _ = p_imp.add_argument(
         '-b', '--nobp', action='store_true', help='跳过 BP 输出，即 blocks 和 items'
     )
-    subpar.add_parser('revert', help='回退图片命名更改')
+    _ = subpar.add_parser('revert', help='回退图片命名更改')
     p_diff = subpar.add_parser('diff', help='比较两个文件')
-    p_diff.add_argument(
+    _ = p_diff.add_argument(
         'files', nargs=2, help='要比较的两个文件，支持 JSON 和 CSV 格式'
     )
     p_sort = subpar.add_parser('sort', help='排序文件')
-    p_sort.add_argument('file', help='要排序的 CSV 文件')
+    _ = p_sort.add_argument('file', help='要排序的 CSV 文件')
     args = par.parse_args()
     return args
 
@@ -765,7 +779,7 @@ logger.addHandler(fil_h)
 logger.addHandler(std_h)
 if __name__ == '__main__':
     try:
-        match argp().cmd:
+        match arg_parser().cmd:
             case 'get':
                 _ = Get()
             case 'idt':
