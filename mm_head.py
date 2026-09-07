@@ -14,7 +14,7 @@ from logging import (
 from pathlib import Path
 from re import search, sub
 from time import sleep
-from typing import Final, TypedDict, cast
+from typing import Final, Literal, TypedDict, cast
 
 from deepdiff import DeepDiff
 from PIL import Image
@@ -55,7 +55,7 @@ class Get:
             b64_raw = Get.search_group(r'value: ?"([^\"]+)"', data)
             b64_raw += '=' * (-len(b64_raw) % 4)
             b64_decoded = b64d(b64_raw).decode()
-            url = loads(b64_decoded)['textures']['SKIN']['url'].replace(
+            url = cast(str, loads(b64_decoded)['textures']['SKIN']['url']).replace(
                 'http:', 'https:'
             )
             name_raw = search(r'(?:name|text): ?"([^"]*)"', data)
@@ -116,7 +116,7 @@ class Get:
 
     def downloading(self, url: str, name: str) -> bool:
         img_path = self.img_dir / f'{name}.png'
-        if arg_parser().nodl or not url or img_path.is_file():
+        if cast(bool, arg_parser().nodl) or not url or img_path.is_file():
             print('跳过下载...', end='', flush=True)
             if url and img_path.is_file() and Get.padding(img_path):
                 print('成功！', flush=True)
@@ -221,7 +221,7 @@ class Get:
         url2id: list[dict[str, str]] = []
         stem, data = next(iter(dict_past.items()))
         dict_post[stem] = []
-        if not arg_parser().nourl:
+        if not cast(bool, arg_parser().nourl):
             url2id = [
                 {
                     f'url:{
@@ -235,9 +235,11 @@ class Get:
             ]
         for entry in data:
             popped = {'url', 'meaningful'}
-            if not arg_parser().armorstand:
+            if not cast(bool, arg_parser().armorstand):
                 popped.add('armor_stand')
-            popped.update(key for key, value in entry.items() if not value and value != 0)
+            popped.update(
+                key for key, value in entry.items() if not value and value != 0
+            )
             _ = [
                 cast(dict[str, object], cast(object, entry)).pop(item)
                 for item in popped
@@ -251,7 +253,7 @@ class Get:
             self.linum = str(index + 1).zfill(3)
             if not entry.strip():
                 continue
-            if not arg_parser().armorstand and 'armor_stand' in entry:
+            if not cast(bool, arg_parser().armorstand) and 'armor_stand' in entry:
                 logger.info('盔甲架输出已关闭。', extra={'pos': f'L{self.linum}'})
                 continue
             print(f'L{self.linum}', end=' - ', flush=True)
@@ -289,7 +291,7 @@ class Get:
 
     @staticmethod
     def url_writer(url2id: list[dict[str, str]], duplicate: dict[str, str]) -> None:
-        if not arg_parser().nourl:
+        if not cast(bool, arg_parser().nourl):
             seen: set[tuple[tuple[str, str], ...]] = set()
             towrite: list[dict[str, str]] = []
             for entry in url2id:
@@ -310,11 +312,11 @@ class Get:
         info_global: DataDictInfo = {}
         f = None
         url2id_global: list[dict[str, str]] = []
-        if arg_parser().nodl:
+        if cast(bool, arg_parser().nodl):
             logger.info('跳过下载已开启。', extra={'pos': self.POS})
         else:
             self.img_dir.mkdir(parents=True, exist_ok=True)
-        if arg_parser().nourl:
+        if cast(bool, arg_parser().nourl):
             logger.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
         for f in Path('raw').glob('*.txt'):
             stem = f.stem
@@ -377,7 +379,7 @@ class Identify:
 
     @staticmethod
     def cache() -> dict[str, str]:
-        if arg_parser().nocache:
+        if cast(bool, arg_parser().nocache):
             logger.info('缓存已忽略！', extra={'pos': 'IDT'})
             return {}
         if not Path('output/cache.json').is_file():
@@ -509,8 +511,7 @@ class Import:
         )
         zhlang = (
             '\n'.join(
-                f'tile.player_head:{i[0]}.name={i[1].title()} 的头'
-                for i in stem2wourl
+                f'tile.player_head:{i[0]}.name={i[1].title()} 的头' for i in stem2wourl
             )
             if fallback
             else '\n'.join(
@@ -578,7 +579,7 @@ class Import:
             for stem in stems
         )
         Import.rp_generator(stem2wourl)
-        if arg_parser().nobp:
+        if cast(bool, arg_parser().nobp):
             logger.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
         else:
             for stem, _ in stem2wourl:
@@ -695,7 +696,7 @@ class Rename:
 
 def diff() -> None:
     pos: Final[str] = 'DIFF'
-    file_source, file_dest = map(Path, arg_parser().files)
+    file_source, file_dest = map(Path, cast(list[str], arg_parser().files))
     if not file_source.is_file():
         logger.error('%s 文件不存在！', str(file_source), extra={'pos': pos})
         return
@@ -722,12 +723,15 @@ def diff() -> None:
         exclude_regex_paths=excluded,
         verbose_level=2,
     )
-    print(result.pretty())
+    if result:
+        print(result.pretty())  # pyright: ignore[reportUnknownMemberType]
+        return
+    logger.info('无差异。', extra={'pos': pos})
 
 
 def sorting() -> None:
     pos: Final[str] = 'SORT'
-    file = Path(arg_parser().file)
+    file = Path(cast(str, arg_parser().file))
     if not file.is_file():
         logger.error('文件不存在！', extra={'pos': pos})
         return
@@ -783,7 +787,9 @@ logger.addHandler(fil_h)
 logger.addHandler(std_h)
 if __name__ == '__main__':
     try:
-        match arg_parser().cmd:
+        match cast(
+            Literal['get', 'idt', 'imp', 'revert', 'diff', 'sort'], arg_parser().cmd
+        ):
             case 'get':
                 _ = Get()
             case 'idt':
