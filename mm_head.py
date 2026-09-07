@@ -237,7 +237,7 @@ class Get:
             popped = {'url', 'meaningful'}
             if not arg_parser().armorstand:
                 popped.add('armor_stand')
-            popped.update(m for m, n in entry.items() if not n and n != 0)
+            popped.update(key for key, value in entry.items() if not value and value != 0)
             _ = [
                 cast(dict[str, object], cast(object, entry)).pop(item)
                 for item in popped
@@ -459,8 +459,8 @@ class Identify:
                     'output/name.csv', 'w', encoding='utf-8-sig', newline=''
                 ) as f:
                     info_towrite = [
-                        (i, Identify.stripping(j, i[0:2]))
-                        for i, j in self.mch_cache.items()
+                        (old_name, Identify.stripping(new_name, old_name[0:2]))
+                        for old_name, new_name in self.mch_cache.items()
                     ]
                     writing = writer(f)
                     writing.writerows(info_towrite)
@@ -509,8 +509,8 @@ class Import:
         )
         zhlang = (
             '\n'.join(
-                f'tile.player_head:{entry[0]}.name={entry[1].title()} 的头'
-                for entry in stem2wourl
+                f'tile.player_head:{i[0]}.name={i[1].title()} 的头'
+                for i in stem2wourl
             )
             if fallback
             else '\n'.join(
@@ -569,7 +569,7 @@ class Import:
         item_template = 'templates/yzbwdlt.item.json'
         img_dir = Path('output/RP/textures/entity')
         block_warned, item_warned = True, True
-        stems = tuple(i.stem for i in img_dir.glob('*.png'))
+        stems = tuple(file.stem for file in img_dir.glob('*.png'))
         if not stems:
             logger.error('无 png 文件！', extra={'pos': self.POS})
             return
@@ -655,7 +655,7 @@ class Rename:
         else:
             logger.warning('未找到信息文件，跳过该文件！', extra={'pos': self.pos})
             info_data = ''
-        stems = tuple(i.stem for i in self.img_dir.glob('*.png'))
+        stems = tuple(file.stem for file in self.img_dir.glob('*.png'))
         all_new_stems: set[str] = (
             {new_stem for new_stem, _ in self.reading(playerheads_csv).values()}
             if playerheads_csv.is_file()
@@ -683,7 +683,7 @@ class Rename:
             elif playerheads_csv.is_file() and stem not in all_new_stems:
                 logger.warning('未在名称文件中找到对应的条目。', extra={'pos': stem})
         names_popped = [stem for stem, info in names.items() if info[1] == 'name']
-        _ = [names.pop(unrelated) for unrelated in names_popped]
+        _ = [names.pop(item) for item in names_popped]
         if names:
             unused = '、'.join(names.keys())
             logger.warning('未使用的条目：%s。', unused, extra={'pos': self.pos})
