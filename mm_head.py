@@ -177,33 +177,33 @@ class Get:
     def merge(
         self,
         dict_general: DataDictInfo,
-        dict_unique: ExtractedDictInfo | None,
+        dict_entry: ExtractedDictInfo | None,
         stem: str,
     ) -> DataDictInfo:
-        if not dict_unique:
+        if not dict_entry:
             return dict_general
-        name, url = dict_unique['id'], dict_unique['url']
+        name, url = dict_entry['id'], dict_entry['url']
         _ = self.downloading(url, name)
         if dict_general.get(stem):
             location2id = {i['location']: i['id'] for i in dict_general[stem]}
-            if not (id_tocheck := location2id.get(dict_unique['location'])):
-                dict_general[stem].append(dict_unique)
+            if not (id_tocheck := location2id.get(dict_entry['location'])):
+                dict_general[stem].append(dict_entry)
             else:
                 logger.warning(
                     '位置 %s 已存在头颅 %s。',
-                    dict_unique['location'],
+                    dict_entry['location'],
                     id_tocheck,
                     extra={'pos': f'L{self.linum} - {name}'},
                 )
         else:
-            dict_general[stem] = [dict_unique]
+            dict_general[stem] = [dict_entry]
         if self.id2url.get(name, [url])[0] != url:
             old = name
             i = 0
             while self.id2url.get(name, [url])[0] != url:
                 i += 1
                 name = f'{name}_{i}' if i == 1 else f'{name[: name.rfind("_")]}_{i}'
-            dict_unique['id'] = name
+            dict_entry['id'] = name
             logger.warning(
                 '对应多重 URL，已将新的更名为 %s。',
                 name,
@@ -212,7 +212,7 @@ class Get:
             print(f'L{self.linum} - {name} - ', end='', flush=True)
             _ = self.downloading(url, name)
         if url:
-            self.id2url[name] = (url, dict_unique['meaningful'])
+            self.id2url[name] = (url, dict_entry['meaningful'])
         return dict_general
 
     @staticmethod
@@ -254,13 +254,9 @@ class Get:
             if not arg_parser().armorstand and 'armor_stand' in entry:
                 logger.info('盔甲架输出已关闭。', extra={'pos': f'L{self.linum}'})
                 continue
-            try:
-                print(f'L{self.linum}', end=' - ', flush=True)
-                dict_unique = self.extract(entry)
-                dict_general = self.merge(dict_general, dict_unique, stem)
-            except Exception:
-                print()
-                logger.exception('未知错误。', extra={'pos': f'L{self.linum}'})
+            print(f'L{self.linum}', end=' - ', flush=True)
+            dict_entry = self.extract(entry)
+            dict_general = self.merge(dict_general, dict_entry, stem)
         print()
         return dict_general
 
@@ -291,7 +287,8 @@ class Get:
             _ = f.write(data)
         return duplicate
 
-    def url_writer(self, url2id: list[dict[str, str]], duplicate: dict[str, str]) -> None:
+    @staticmethod
+    def url_writer(url2id: list[dict[str, str]], duplicate: dict[str, str]) -> None:
         if not arg_parser().nourl:
             seen: set[tuple[tuple[str, str], ...]] = set()
             towrite: list[dict[str, str]] = []
@@ -337,7 +334,7 @@ class Get:
             if url2id_entry:
                 url2id_global.extend(url2id_entry)
         duplicate = self.info_writer(info_global)
-        self.url_writer(url2id_global, duplicate)
+        Get.url_writer(url2id_global, duplicate)
         logger.info('信息提取完成！', extra={'pos': self.POS})
 
 
@@ -345,16 +342,16 @@ class Identify:
     POS: Final[str] = 'IDT'
 
     @staticmethod
-    def ext(url: str, msg: str) -> str:
+    def extract(url: str, msg: str) -> str:
         sleep(0.2)
         for i in range(3):
             try:
-                res = get(
+                response = get(
                     'https://minecraft-heads.com/custom-heads/search',
                     params={'searchterm': url},
                     timeout=(6.05, 10),
                 )
-                res.raise_for_status()
+                response.raise_for_status()
                 break
             except exceptions.ConnectionError:
                 print(f'连接错误（{i + 1}/3）...', end='', flush=True)
@@ -372,23 +369,25 @@ class Identify:
             print()
             logger.error('已超时。', extra={'pos': msg})
             return ''
-        data = res.text
+        data = response.text
         if 'No Heads available' in data:
             return ''
-        con = data[data.find('descending') : data.find('Search Tips')]
-        return Get.search_group(r'a href=.+title="([^"]+)"', con)
+        content = data[data.find('descending') : data.find('Search Tips')]
+        return Get.search_group(r'a href=.+title="([^"]+)"', content)
 
     @staticmethod
-    def cache() -> dict:
+    def cache() -> dict[str, str]:
         if arg_parser().nocache:
             logger.info('缓存已忽略！', extra={'pos': 'IDT'})
             return {}
         if not Path('output/cache.json').is_file():
             return {}
-        with open('output/cache.json', 'r', encoding='utf-8') as rd:
-            data = load(rd)
-            data_popped = [i for i, j in data.items() if not j]
-            _ = [data.pop(i) for i in data_popped]
+        with open('output/cache.json', 'r', encoding='utf-8') as f:
+            data: dict[str, str] = cast(dict[str, str], load(f))
+            data_popped = [
+                old_name for old_name, new_name in data.items() if not new_name
+            ]
+            _ = [data.pop(popped) for popped in data_popped]
             logger.info('缓存已加载！', extra={'pos': 'IDT'})
             return data
 
@@ -399,71 +398,76 @@ class Identify:
         name += '_' + identifier
         return name
 
-    def pro(self, data: dict, linum: str) -> None:
-        n, m = next(iter(data.items()))
-        msg = f'L{linum} - {m}'
+    def process(self, data: dict[str, str], linum: str) -> None:
+        url, old_name = next(iter(data.items()))
+        msg = f'L{linum} - {old_name}'
         print(msg, end=' - ', flush=True)
-        if (k := self.c_lt.get(m)) or k == '':
-            j = k
+        if (cache_name := self.mch_cache.get(old_name)) or cache_name == '':
+            new_name = cache_name
             print('（缓存）', end='', flush=True)
         else:
-            j = Identify.ext(n, msg)
-            if j:
-                self.c_lt[m] = j
-        if j:
-            j = Identify.stripping(j, n[4:6])
-            print(j, flush=True)
-            if l := self.n_lt.get(j):
-                self.dup[j] = self.dup.get(j, 0) + 1
-                k = j
-                j += f'_{self.dup[j]}'
+            new_name = Identify.extract(url, msg)
+            if new_name:
+                self.mch_cache[old_name] = new_name
+        if new_name:
+            new_name = Identify.stripping(new_name, url[4:6])
+            print(new_name, flush=True)
+            if canonical_old := self.new2old.get(new_name):
+                self.duplicate_num[new_name] = self.duplicate_num.get(new_name, 0) + 1
+                cache_name = new_name
+                new_name += f'_{self.duplicate_num[new_name]}'
                 logger.warning(
-                    '与 %s 拥有共同的新名称，已更名为 %s。', l, j, extra={'pos': msg}
+                    '与 %s 拥有共同的新名称，已更名为 %s。',
+                    canonical_old,
+                    new_name,
+                    extra={'pos': msg},
                 )
-            self.n_lt[j] = m
+            self.new2old[new_name] = old_name
         else:
-            print(m, flush=True)
-            j = m
+            print(old_name, flush=True)
+            new_name = old_name
             logger.warning('无可用名称。', extra={'pos': msg})
-        self.dt.append({'old': m, 'new': j})
+        self.info_dict.append({'old': old_name, 'new': new_name})
 
     def __init__(self) -> None:
-        self.c_lt = Identify.cache()
-        self.dt = []
-        self.dup = {}
-        self.n_lt = {}
+        self.mch_cache: dict[str, str] = Identify.cache()
+        self.info_dict: list[dict[str, str]] = []
+        self.duplicate_num: dict[str, int] = {}
+        self.new2old: dict[str, str] = {}
         try:
             path = 'output/url.json'
             if Path(path).is_file():
                 with open(path, 'r', encoding='utf-8') as rd:
-                    data = load(rd)
+                    data = cast(list[dict[str, str]], load(rd))
                 logger.info('%s - L%s', path, len(data), extra={'pos': self.POS})
-                for i, j in enumerate(data):
-                    self.pro(j, str(i + 1).zfill(3))
-                lt = [[i['old'], i['new']] for i in self.dt]
+                for i, entry in enumerate(data):
+                    self.process(entry, str(i + 1).zfill(3))
+                info_towrite = [[i['old'], i['new']] for i in self.info_dict]
                 with open(
                     'output/name.csv', 'w', encoding='utf-8-sig', newline=''
                 ) as f:
                     writing = writer(f)
-                    writing.writerows(lt)
+                    writing.writerows(info_towrite)
             else:
                 logger.error('%s 不存在！', path, extra={'pos': self.POS})
             logger.info('名称对照完成！', extra={'pos': self.POS})
         except PermissionError:
             print()
             logger.error('已触发 Turnstile！', extra={'pos': self.POS})
-            if self.c_lt:
+            if self.mch_cache:
                 with open(
                     'output/name.csv', 'w', encoding='utf-8-sig', newline=''
                 ) as f:
-                    lt = [
-                        (i, Identify.stripping(j, i[0:2])) for i, j in self.c_lt.items()
+                    info_towrite = [
+                        (i, Identify.stripping(j, i[0:2]))
+                        for i, j in self.mch_cache.items()
                     ]
                     writing = writer(f)
-                    writing.writerows(lt)
+                    writing.writerows(info_towrite)
+                logger.info('已使用缓存数据生成 name.csv！', extra={'pos': self.POS})
         finally:
-            with open('output/cache.json', 'w', encoding='utf-8') as wt:
-                dump(self.c_lt, wt, indent=4)
+            with open('output/cache.json', 'w', encoding='utf-8') as f:
+                dump(self.mch_cache, f, indent=4)
                 logger.info('缓存已输出！', extra={'pos': self.POS})
 
 
