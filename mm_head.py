@@ -318,8 +318,8 @@ class Get:
             logger.info('跳过 URL 记录已开启。', extra={'pos': self.POS})
         for f in Path('raw').glob('*.txt'):
             stem = f.stem
-            with open(f, 'r', encoding='utf-8') as rd:
-                data = rd.read().splitlines()
+            with open(f, 'r', encoding='utf-8') as reading:
+                data = reading.read().splitlines()
             logger.warning('%s - L%s', stem, len(data), extra={'pos': self.POS})
             info_entry, url2id_entry = Get.prune(self.process(stem, data))
             info_global |= info_entry
@@ -437,8 +437,8 @@ class Identify:
         try:
             path = 'output/url.json'
             if Path(path).is_file():
-                with open(path, 'r', encoding='utf-8') as rd:
-                    data = cast(list[dict[str, str]], load(rd))
+                with open(path, 'r', encoding='utf-8') as f:
+                    data = cast(list[dict[str, str]], load(f))
                 logger.info('%s - L%s', path, len(data), extra={'pos': self.POS})
                 for i, entry in enumerate(data):
                     self.process(entry, str(i + 1).zfill(3))
@@ -475,59 +475,61 @@ class Import:
     POS: Final[str] = 'IMP'
 
     @staticmethod
-    def blotem(idn: str, templ: str) -> bool:
-        if not Path(templ).is_file():
+    def bp_generator(name: str, template: str) -> bool:
+        if not Path(template).is_file():
             return False
-        with open(templ, 'r', encoding='utf-8') as rd:
-            tem = rd.read()
-        flag = templ[templ.rfind('.', 0, -7) + 1 : templ.rfind('.')]
-        wt_path = f'output/BP/{flag}s/{idn}.{flag}.json'
-        uni = tem.replace('yzbwdlt', idn)
-        if flag == 'block' and idn in {
+        with open(template, 'r', encoding='utf-8') as f:
+            content = f.read()
+        flag = template[template.rfind('.', 0, -7) + 1 : template.rfind('.')]
+        output_path = f'output/BP/{flag}s/{name}.{flag}.json'
+        content = content.replace('yzbwdlt', name)
+        if flag == 'block' and name in {
             'swamp_monster',
             'swamp_monster_3d',
             'diamivore_3d',
         }:
-            uni = uni.replace('popped', 'no_reaction')
-        Import.writing(wt_path, uni)
+            content = content.replace('popped', 'no_reaction')
+        Import.writing(output_path, content)
         return True
 
     @staticmethod
-    def terlang(idn_lt: tuple) -> None:
-        fb = True
+    def rp_generator(stem2wourl: tuple[tuple[str, str], ...]) -> None:
+        data: dict[str, str] = {}
+        fallback = True
         if Path('templates/playerheads.csv').is_file():
-            fb = False
+            fallback = False
             with open('templates/playerheads.csv', 'r', encoding='utf-8-sig') as f:
                 reading = reader(f)
                 data = {i[1]: i[2] for i in reading}
         else:
             logger.warning('未找到译名文件，使用备用方案！', extra={'pos': 'IMP'})
-        ter = '\n'.join(
+        terrain = '\n'.join(
             f'        "player_head_{i[0]}": {{ "textures": "textures/entity/{i[0]}" }},'
-            for i in idn_lt
+            for i in stem2wourl
         )
-        zhl = (
+        zhlang = (
             '\n'.join(
-                f'tile.player_head:{i[0]}.name={i[1].title()} 的头' for i in idn_lt
+                f'tile.player_head:{entry[0]}.name={entry[1].title()} 的头'
+                for entry in stem2wourl
             )
-            if fb
+            if fallback
             else '\n'.join(
                 f'tile.player_head:{i[0]}.name={
                     data.get(i[0], i[0])[: data.get(i[0], i[0]).rfind("_")].title()
                     if "_" in {data.get(i[0], i[0])[-3], data.get(i[0], i[0])[-2]}
                     else data.get(i[0], i[1]).title()
                 } 的头'
-                for i in idn_lt
+                for i in stem2wourl
             )
         )
-        enl = '\n'.join(
-            f"tile.player_head:{i[0]}.name={i[1].title()}'s Head" for i in idn_lt
+        enlang = '\n'.join(
+            f"tile.player_head:{i[0]}.name={i[1].title()}'s Head" for i in stem2wourl
         )
-        ter_full = (
+        terrain_towrite = (
             '{\n'
             '    "resource_pack_name": "player_head",\n'
             '    "texture_data": {\n'
-            f'{ter}\n\n'
+            f'{terrain}\n\n'
             '        "player_head_yzbwdlt": { "textures": "textures/entity/yzbwdlt" },\n'
             '        "player_head_chthollies": { "textures": "textures/entity/chthollies" },\n'
             '        "player_head_jhy2189": { "textures": "textures/entity/jhy2189" },\n'
@@ -535,58 +537,25 @@ class Import:
             '    }'
             '}'
         )
-        zhl_full = (
+        zhlang_towrite = (
             '## ===== 方块 =====\n'
-            f'{zhl}\n\n'
+            f'{zhlang}\n\n'
             'tile.player_head:yzbwdlt.name=YZBWDLT 的头\n'
             'tile.player_head:freamoluwu.name=Freamoluwu 的头\n'
             'tile.player_head:jhy2189.name=JHY2189 的头\n'
             'tile.player_head:chthollies.name=Chthollies 的头\n'
         )
-        enl_full = (
+        enlang_towrite = (
             '## ===== Blocks =====\n'
-            f'{enl}\n\n'
+            f'{enlang}\n\n'
             "tile.player_head:yzbwdlt.name=YZBWDLT's Head\n"
             "tile.player_head:freamoluwu.name=Freamoluwu's Head\n"
             "tile.player_head:jhy2189.name=JHY2189's Head\n"
             "tile.player_head:chthollies.name=Chthollies's Head\n"
         )
-        Import.writing('output/RP/textures/terrain_texture.json', ter_full)
-        Import.writing('output/RP/texts/en_US.lang', enl_full)
-        Import.writing('output/RP/texts/zh_CN.lang', zhl_full)
-
-    def gen(self) -> None:
-        block_tem = 'templates/yzbwdlt.block.json'
-        item_tem = 'templates/yzbwdlt.item.json'
-        img_dir = Path('output/RP/textures/entity')
-        block_info, item_info = True, True
-        stems = tuple(i.stem for i in img_dir.glob('*.png'))
-        if not stems:
-            logger.error('无 png 文件！', extra={'pos': self.POS})
-            return
-        stems = tuple(
-            (i, (i[: i.rfind('_')] if '_' in {i[-3], i[-2]} else i)) for i in stems
-        )
-        Import.terlang(stems)
-        if arg_parser().nobp:
-            logger.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
-        else:
-            for i, _ in stems:
-                if not Import.blotem(i, block_tem) and block_info:
-                    logger.error(
-                        '未找到模板 %s，跳过 block 生成！',
-                        block_tem,
-                        extra={'pos': self.POS},
-                    )
-                    block_info = False
-                if not Import.blotem(i, item_tem) and item_info:
-                    logger.error(
-                        '未找到模板 %s，跳过 item 生成！',
-                        item_tem,
-                        extra={'pos': self.POS},
-                    )
-                    item_info = False
-        logger.info('导入数据生成完成！', extra={'pos': self.POS})
+        Import.writing('output/RP/textures/terrain_texture.json', terrain_towrite)
+        Import.writing('output/RP/texts/en_US.lang', enlang_towrite)
+        Import.writing('output/RP/texts/zh_CN.lang', zhlang_towrite)
 
     @staticmethod
     def writing(path: str, content: str) -> None:
@@ -596,7 +565,38 @@ class Import:
 
     def __init__(self) -> None:
         _ = Rename()
-        self.gen()
+        block_template = 'templates/yzbwdlt.block.json'
+        item_template = 'templates/yzbwdlt.item.json'
+        img_dir = Path('output/RP/textures/entity')
+        block_warned, item_warned = True, True
+        stems = tuple(i.stem for i in img_dir.glob('*.png'))
+        if not stems:
+            logger.error('无 png 文件！', extra={'pos': self.POS})
+            return
+        stem2wourl: tuple[tuple[str, str], ...] = tuple(
+            (stem, (stem[: stem.rfind('_')] if '_' in {stem[-3], stem[-2]} else stem))
+            for stem in stems
+        )
+        Import.rp_generator(stem2wourl)
+        if arg_parser().nobp:
+            logger.info('跳过 blotem 生成已开启。', extra={'pos': self.POS})
+        else:
+            for stem, _ in stem2wourl:
+                if not Import.bp_generator(stem, block_template) and block_warned:
+                    logger.error(
+                        '未找到模板 %s，跳过 block 生成！',
+                        block_template,
+                        extra={'pos': self.POS},
+                    )
+                    block_warned = False
+                if not Import.bp_generator(stem, item_template) and item_warned:
+                    logger.error(
+                        '未找到模板 %s，跳过 item 生成！',
+                        item_template,
+                        extra={'pos': self.POS},
+                    )
+                    item_warned = False
+        logger.info('导入数据生成完成！', extra={'pos': self.POS})
 
 
 class Rename:
