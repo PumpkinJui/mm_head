@@ -17,10 +17,17 @@ dev = [
 ]
 
 [tool.pylint."messages control"]
-disable = ["missing-module-docstring", "missing-class-docstring", "missing-function-docstring", "broad-exception-caught"]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+]
 
 [tool.ruff.format]
 quote-style = "single"
 
 [tool.ruff.lint]
-extend-select = ["W", "PL"]
+extend-select = [
+    "W",
+    "PL"
+]

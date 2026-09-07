@@ -805,7 +805,7 @@ if __name__ == '__main__':
         print()
     except AssertionError:
         pass
-    except Exception:
+    except Exception: # pylint: disable=broad-exception-caught
         logger.exception('未知错误。', extra={'pos': __name__})
     finally:
         _ = input('按回车退出...')
