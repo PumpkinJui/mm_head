@@ -29,5 +29,13 @@ quote-style = "single"
 [tool.ruff.lint]
 extend-select = [
     "W",
-    "PL"
+    "ANN",
+    "PL",
+    "PYI"
 ]
+
+[tool.ty.rules]
+dynamic-function-decorator-return = "error"
+missing-type-argument = "error"
+possibly-unresolved-reference = "warn"
+unsound-return-statement = "error"

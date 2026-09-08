@@ -43,7 +43,9 @@ class Get:
         if not result:
             logger.error('不能从 %s 中获得 "%s"！', data, pattern, extra={'pos': 'GET'})
             raise AssertionError
-        return result.group(1)
+        exact = result.group(1)
+        assert isinstance(exact, str)
+        return exact
 
     @staticmethod
     def get_name(data: str) -> tuple[str, str, bool]:
@@ -75,6 +77,7 @@ class Get:
             meaningful = False
         if meaningful and name and url:
             name += f'_{url[url.rfind("/") + 1 : url.rfind("/") + 3]}'
+        assert isinstance(name, str)
         return name, url, meaningful
 
     def extract(self, data: str) -> ExtractedDictInfo | None:
