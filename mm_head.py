@@ -164,7 +164,7 @@ class Get:
                 print('thelesserdog...', end='', flush=True)
                 pixel = img.load()
                 assert pixel is not None
-                for w in range(31, 64):
+                for w in range(32, 64):
                     for h in range(16):
                         if pixel[w, h] == (255, 255, 255, 255):
                             pixel[w, h] = (0, 0, 0, 0)
