@@ -285,8 +285,7 @@ class Get:
                     _ = duplicate_file.replace(self.img_dir / f'{canonical_id}.png')
                 else:
                     logger.warning('该文件不存在，已跳过。', extra={'pos': f'{name}'})
-        with open('output/info.json', 'w', encoding='utf-8') as f:
-            _ = f.write(data)
+        write_file('output/info.json', data)
         return duplicate
 
     @staticmethod
@@ -492,7 +491,7 @@ class Import:
             'diamivore_3d',
         }:
             content = content.replace('popped', 'no_reaction')
-        Import.writing(output_path, content)
+        write_file(output_path, content)
         return True
 
     @staticmethod
@@ -555,15 +554,9 @@ class Import:
             "tile.player_head:jhy2189.name=JHY2189's Head\n"
             "tile.player_head:chthollies.name=Chthollies's Head\n"
         )
-        Import.writing('output/RP/textures/terrain_texture.json', terrain_towrite)
-        Import.writing('output/RP/texts/en_US.lang', enlang_towrite)
-        Import.writing('output/RP/texts/zh_CN.lang', zhlang_towrite)
-
-    @staticmethod
-    def writing(path: str, content: str) -> None:
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as f:
-            _ = f.write(content)
+        write_file('output/RP/textures/terrain_texture.json', terrain_towrite)
+        write_file('output/RP/texts/en_US.lang', enlang_towrite)
+        write_file('output/RP/texts/zh_CN.lang', zhlang_towrite)
 
     def __init__(self) -> None:
         _ = Rename()
@@ -690,8 +683,7 @@ class Rename:
             unused = '、'.join(names.keys())
             logger.warning('未使用的条目：%s。', unused, extra={'pos': self.pos})
         if info_json.is_file():
-            with open(info_json, 'w', encoding='utf-8') as f:
-                _ = f.write(info_data)
+            write_file(info_json, info_data)
         logger.info('重命名完成！', extra={'pos': self.pos})
 
 
@@ -746,6 +738,12 @@ def sorting() -> None:
         writing = writer(f)
         writing.writerows(data)
     logger.info('排序完成！', extra={'pos': pos})
+
+
+def write_file(path: str | Path, content: str) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        _ = f.write(content)
 
 
 def arg_parser() -> Namespace:
