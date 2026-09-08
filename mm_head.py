@@ -560,8 +560,8 @@ class Import:
 
     def __init__(self) -> None:
         _ = Rename()
-        block_template = 'templates/yzbwdlt.block.json'
-        item_template = 'templates/yzbwdlt.item.json'
+        block_template = 'templates/head.block.json'
+        item_template = 'templates/head.item.json'
         img_dir = Path('output/RP/textures/entity')
         block_warned, item_warned = True, True
         stems = tuple(file.stem for file in img_dir.glob('*.png'))
