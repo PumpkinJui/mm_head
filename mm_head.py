@@ -750,7 +750,7 @@ def sorting() -> None:
 
 def arg_parser() -> Namespace:
     par = ArgumentParser(description='密室杀手自定义头颅生成器')
-    subpar = par.add_subparsers(dest='cmd')
+    subpar = par.add_subparsers(dest='cmd', required=True)
     p_get = subpar.add_parser('get', help='提取头颅信息')
     _ = p_get.add_argument(
         '-a', '--armorstand', action='store_true', help='输出盔甲架数据'
