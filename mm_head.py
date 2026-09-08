@@ -291,19 +291,20 @@ class Get:
 
     @staticmethod
     def url_writer(url2id: list[dict[str, str]], duplicate: dict[str, str]) -> None:
-        if not cast(bool, arg_parser().nourl):
-            seen: set[tuple[tuple[str, str], ...]] = set()
-            towrite: list[dict[str, str]] = []
-            for entry in url2id:
-                url, name = next(iter(entry.items()))
-                if name in duplicate:
-                    entry[url] = duplicate[name]
-                url_sorted = tuple(sorted(entry.items()))
-                if url_sorted not in seen:
-                    seen.add(url_sorted)
-                    towrite.append(entry)
-            with open('output/url.json', 'w', encoding='utf-8') as f:
-                dump(towrite, f, indent=4)
+        if cast(bool, arg_parser().nourl):
+            return
+        seen: set[tuple[tuple[str, str], ...]] = set()
+        towrite: list[dict[str, str]] = []
+        for entry in url2id:
+            url, name = next(iter(entry.items()))
+            if name in duplicate:
+                entry[url] = duplicate[name]
+            url_sorted = tuple(sorted(entry.items()))
+            if url_sorted not in seen:
+                seen.add(url_sorted)
+                towrite.append(entry)
+        with open('output/url.json', 'w', encoding='utf-8') as f:
+            dump(towrite, f, indent=4)
 
     def __init__(self) -> None:
         self.id2url: dict[str, tuple[str, bool]] = {}
