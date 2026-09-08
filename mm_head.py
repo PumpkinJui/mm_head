@@ -63,7 +63,7 @@ class Get:
                 name_raw = search(
                     r'"minecraft:custom_name": ?"(?:§[a-z\d])?([^"]+)"', data
                 )
-            if not name_raw or name_raw.group(1) == 'textures':
+            if not name_raw or name_raw.group(1) in {'', 'textures'}:
                 name = url[url.rfind('/') + 1 : url.rfind('/') + 7]
                 meaningful = False
             else:
