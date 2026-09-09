@@ -388,7 +388,7 @@ class Identify:
         if not Path('output/cache.json').is_file():
             return {}
         with open('output/cache.json', 'r', encoding='utf-8') as f:
-            data: dict[str, str] = cast(dict[str, str], load(f))
+            data = cast(dict[str, str], load(f))
             data_popped = [
                 old_name for old_name, new_name in data.items() if not new_name
             ]
