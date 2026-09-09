@@ -1,5 +1,5 @@
 [project]
-name = "mm_head"
+name = "mm_script"
 version = "0.0.1"
 description = "量筒的密室杀手配套脚本"
 readme = "README.md"

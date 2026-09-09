@@ -1,8 +1,10 @@
-# mm_head
+# mm_script
 
 [量筒的密室杀手](https://github.com/YZBWDLT/MurderMystery)配套脚本。
 
 ## 功能简介
+
+### mm_head
 
 - Get 类，用于根据 `/raw/` 中 TXT 内的 setblock 数据，获取自定义头颅的皮肤文件与位置、朝向等信息，并根据这些信息生成 `info.json` 信息文件和 `url.json` URL 对照文件。
 - Identify 类，用于根据自定义头颅的 URL 获取其名称，并生成名称对照文件 `name.csv` 和缓存文件 `cache.json`。名称信息来源于 [Minecraft-Heads](https://minecraft-heads.com/)。由于 MCH 已启用 [Turnstile](https://challenges.cloudflare.com/)，该模块目前不可用，仅能通过先前已有的缓存生成 `name.csv`。
@@ -11,11 +13,17 @@
 - diff 函数，用于比较给出的 JSON 或 CSV 文件有何差异。
 - sorting 函数，用于将给定的 CSV 文件按第一列字母顺序排序。
 
+### mm_painting
+
+- Painting 类，根据 `/raw_painting/` 的原始文件和 `/templates/` 的模板文件，实现画的切分与定义文件生成。
+
 ## 使用方法
 
-本脚本适配了命令行参数，且无法在 REPL 中使用完整功能。请使用 `uv run mm_head.py -h` 或 `python mm_head.py -h` 查看帮助信息。
+mm_head 适配了命令行参数，且无法在 REPL 中使用完整功能。请使用 `uv run mm_head.py -h` 或 `python mm_head.py -h` 查看帮助信息。
 
-## 工作流
+mm_painting 无命令行参数，随意。
+
+## mm_head 工作流
 
 ### 数据采集
 
