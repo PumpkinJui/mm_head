@@ -318,7 +318,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mm-head"
+name = "mm-script"
 version = "0.0.1"
 source = { virtual = "." }
 dependencies = [
