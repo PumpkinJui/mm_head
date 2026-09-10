@@ -125,7 +125,7 @@ class Painting:
         for painting in Path(self.path_map['input']['painting']).glob('*.png'):
             stem = painting.stem
             _ = copy2(painting, self.path_map['output']['painting'] / painting.name)
-            self.enlang.append(f'item.painting:{stem}.name={lang_dict.get(stem)}')
+            self.enlang.append(f'item.painting:{stem}.name={lang_dict.get(stem, stem)}')
             if stem not in lang_dict:
                 logger.warning('无译名。', extra={'pos': f'{self.POS} - {stem}'})
             _ = self.crop(painting)
