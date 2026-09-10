@@ -811,4 +811,4 @@ if __name__ == '__main__':
         logger.exception('未知错误。', extra={'pos': __name__})
     finally:
         _ = input('按回车退出...')
-shutdown()
+        shutdown()

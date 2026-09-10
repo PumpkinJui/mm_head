@@ -1,4 +1,5 @@
 from json import dump, load
+from logging import shutdown
 from pathlib import Path
 from shutil import copy2
 from typing import Final, TypedDict, cast
@@ -145,4 +146,10 @@ class Painting:
 
 
 if __name__ == '__main__':
-    _ = Painting()
+    try:
+        _ = Painting()
+    except Exception:  # pylint: disable=broad-exception-caught
+        logger.exception('未知错误。', extra={'pos': __name__})
+    finally:
+        _ = input('按回车退出...')
+        shutdown()

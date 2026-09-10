@@ -33,6 +33,7 @@ extend-select = [
     "PL",
     "PYI"
 ]
+logger-objects = ["mm_head.logger"]
 
 [tool.ty.rules]
 dynamic-function-decorator-return = "error"
