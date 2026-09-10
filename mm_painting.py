@@ -31,7 +31,7 @@ class Painting:
             )
             Painting.bp_generator(
                 self.path_map['template']['replacer'],
-                self.path_map['output']['item'],
+                self.path_map['output_dir']['item'],
                 stem,
                 f'{width_mark}{height_mark}',
             )
@@ -44,16 +44,18 @@ class Painting:
                     location = f'{w}{h_real}'
                     tile_name = f'{stem}_{location}'
                     tile = f.crop((w * 16, h * 16, (w + 1) * 16, (h + 1) * 16))
-                    tile.save(self.path_map['output']['painting'] / f'{tile_name}.png')
+                    tile.save(
+                        self.path_map['output_dir']['painting'] / f'{tile_name}.png'
+                    )
                     Painting.bp_generator(
                         self.path_map['template']['block'],
-                        self.path_map['output']['block'],
+                        self.path_map['output_dir']['block'],
                         stem,
                         location,
                     )
                     Painting.bp_generator(
                         self.path_map['template']['item'],
-                        self.path_map['output']['item'],
+                        self.path_map['output_dir']['item'],
                         stem,
                         location,
                     )
@@ -103,10 +105,16 @@ class Painting:
                 'json': Path('raw_painting/vanillaPaintingData.json'),
                 'painting': Path('raw_painting'),
             },
-            'output': {
+            'output_dir': {
                 'block': Path('output/BP_custom_painting/blocks/painting'),
                 'item': Path('output/BP_custom_painting/items/painting'),
                 'painting': Path('output/RP_custom_painting/textures/painting'),
+            },
+            'output_file': {
+                'enlang': Path('output/RP_custom_painting/texts/en_US.lang'),
+                'texture': Path(
+                    'output/RP_custom_painting/textures/terrain_texture.json'
+                ),
             },
         }
         for path in self.path_map['template'].values():
@@ -118,30 +126,30 @@ class Painting:
                 '译名不存在！', extra={'pos': f'{self.POS} - {data_json.name}'}
             )
             return
-        for path in self.path_map['output'].values():
+        for path in self.path_map['output_dir'].values():
             path.mkdir(parents=True, exist_ok=True)
         with open(data_json, 'r', encoding='utf-8') as f:
             lang_json = cast(list[dict[str, str]], load(f))
             lang_dict = {entry['id'].lower(): entry['name'] for entry in lang_json}
         for painting in Path(self.path_map['input']['painting']).glob('*.png'):
             stem = painting.stem
-            _ = copy2(painting, self.path_map['output']['painting'] / painting.name)
+            _ = copy2(painting, self.path_map['output_dir']['painting'] / painting.name)
             self.enlang.append(f'item.painting:{stem}.name={lang_dict.get(stem, stem)}')
             if stem not in lang_dict:
                 logger.warning('无译名。', extra={'pos': f'{self.POS} - {stem}'})
             _ = self.crop(painting)
         with open(
-            'output/RP_custom_painting/textures/terrain_texture.json',
+            self.path_map['output_file']['texture'],
             'w',
             encoding='utf-8',
         ) as f:
             dump(self.texture_json, f, indent=4)
         _ = copy2(
-            'output/RP_custom_painting/textures/terrain_texture.json',
-            'output/RP_custom_painting/textures/item_texture.json',
+            self.path_map['output_file']['texture'],
+            self.path_map['output_file']['texture'].parent / 'item_texture.json',
         )
         self.enlang.append('')
-        write_file('output/RP_custom_painting/texts/en_US.lang', '\n'.join(self.enlang))
+        write_file(self.path_map['output_file']['enlang'], '\n'.join(self.enlang))
         logger.info('输出完成！', extra={'pos': self.POS})
 
 
